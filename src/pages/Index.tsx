@@ -54,54 +54,113 @@ const Index = () => {
     setTimeout(() => setShowCheerUp(false), 3000);
   };
 
+  const parseTimeToHours = (timeStr: string): number => {
+    if (timeStr.trim() === '0 min') return 0;
+    
+    const hourMatch = timeStr.match(/(\d+)\s*hrs?/);
+    const minMatch = timeStr.match(/(\d+)\s*min/);
+    
+    const hours = hourMatch ? parseInt(hourMatch[1]) : 0;
+    const minutes = minMatch ? parseInt(minMatch[1]) : 0;
+    
+    return hours + (minutes / 60);
+  };
+
   const parseAttendanceData = (data: string) => {
     try {
-      // Try to parse as CSV first
-      const result = Papa.parse(data, {
-        header: true,
-        skipEmptyLines: true,
-        transform: (value) => value.trim()
-      });
-
-      if (result.errors.length > 0) {
-        throw new Error('CSV parsing failed');
-      }
-
       const records: AttendanceRecord[] = [];
       let hasAheadDays = false;
       let hasLaggingDays = false;
 
-      result.data.forEach((row: any) => {
-        // Handle different possible column names
-        const dateField = row.Date || row.date || row.DATE || Object.values(row)[0];
-        const hoursField = row.Hours || row.hours || row.Attendance || row.attendance || 
-                          row['Logged Hours'] || row['logged hours'] || Object.values(row)[1];
-
-        if (dateField && hoursField) {
-          const loggedHours = parseFloat(hoursField.toString().replace(/[^\d.]/g, ''));
-          if (!isNaN(loggedHours)) {
-            const difference = loggedHours - dailyHours;
+      // Check if input contains time format (hrs, min)
+      if (data.includes('hrs') || data.includes('min')) {
+        // Parse time-based input
+        const timeEntries = data.split('\t').map(entry => entry.trim()).filter(entry => entry);
+        const currentDate = new Date();
+        const currentMonth = currentDate.getMonth();
+        const currentYear = currentDate.getFullYear();
+        
+        timeEntries.forEach((timeEntry, index) => {
+          const dayOfMonth = index + 1;
+          const date = new Date(currentYear, currentMonth, dayOfMonth);
+          const dayOfWeek = date.getDay();
+          
+          // Skip if it's a weekend (Saturday = 6, Sunday = 0) and the entry is "0 min"
+          const loggedHours = parseTimeToHours(timeEntry);
+          
+          if (loggedHours > 0 || (dayOfWeek !== 0 && dayOfWeek !== 6)) {
+            const difference = loggedHours - (dayOfWeek === 0 || dayOfWeek === 6 ? 0 : dailyHours);
             let status: 'ahead' | 'lagging' | 'ontrack';
             
-            if (difference > 0) {
-              status = 'ahead';
-              hasAheadDays = true;
-            } else if (difference < 0) {
-              status = 'lagging';
-              hasLaggingDays = true;
+            if (dayOfWeek === 0 || dayOfWeek === 6) {
+              // Weekend handling
+              status = loggedHours > 0 ? 'ahead' : 'ontrack';
+              if (loggedHours > 0) hasAheadDays = true;
             } else {
-              status = 'ontrack';
+              // Weekday handling
+              if (difference > 0) {
+                status = 'ahead';
+                hasAheadDays = true;
+              } else if (difference < 0) {
+                status = 'lagging';
+                hasLaggingDays = true;
+              } else {
+                status = 'ontrack';
+              }
             }
 
             records.push({
-              date: dateField.toString(),
+              date: date.toISOString().split('T')[0],
               loggedHours,
               status,
-              difference
+              difference: dayOfWeek === 0 || dayOfWeek === 6 ? loggedHours : difference
             });
           }
+        });
+      } else {
+        // Try to parse as CSV
+        const result = Papa.parse(data, {
+          header: true,
+          skipEmptyLines: true,
+          transform: (value) => value.trim()
+        });
+
+        if (result.errors.length > 0) {
+          throw new Error('CSV parsing failed');
         }
-      });
+
+        result.data.forEach((row: any) => {
+          // Handle different possible column names
+          const dateField = row.Date || row.date || row.DATE || Object.values(row)[0];
+          const hoursField = row.Hours || row.hours || row.Attendance || row.attendance || 
+                            row['Logged Hours'] || row['logged hours'] || Object.values(row)[1];
+
+          if (dateField && hoursField) {
+            const loggedHours = parseFloat(hoursField.toString().replace(/[^\d.]/g, ''));
+            if (!isNaN(loggedHours)) {
+              const difference = loggedHours - dailyHours;
+              let status: 'ahead' | 'lagging' | 'ontrack';
+              
+              if (difference > 0) {
+                status = 'ahead';
+                hasAheadDays = true;
+              } else if (difference < 0) {
+                status = 'lagging';
+                hasLaggingDays = true;
+              } else {
+                status = 'ontrack';
+              }
+
+              records.push({
+                date: dateField.toString(),
+                loggedHours,
+                status,
+                difference
+              });
+            }
+          }
+        });
+      }
 
       if (records.length === 0) {
         throw new Error('No valid attendance data found');

@@ -22,8 +22,10 @@ const DEFAULT_DAILY_HOURS = 8;
 export interface AttendanceRecord {
   date: string;
   loggedHours: number;
-  status: 'ahead' | 'lagging' | 'ontrack';
+  status: 'ahead' | 'lagging' | 'ontrack' | 'weekend' | 'holiday';
   difference: number;
+  isWeekend?: boolean;
+  isHoliday?: boolean;
 }
 
 const Index = () => {
@@ -69,8 +71,8 @@ const Index = () => {
   const parseAttendanceData = (data: string) => {
     try {
       const records: AttendanceRecord[] = [];
-      let hasAheadDays = false;
-      let hasLaggingDays = false;
+      let totalWorkingHoursAhead = 0;
+      let totalWorkingHoursBehind = 0;
 
       // Check if input contains time format (hrs, min)
       if (data.includes('hrs') || data.includes('min')) {
@@ -84,38 +86,46 @@ const Index = () => {
           const dayOfMonth = index + 1;
           const date = new Date(currentYear, currentMonth, dayOfMonth);
           const dayOfWeek = date.getDay();
-          
-          // Skip if it's a weekend (Saturday = 6, Sunday = 0) and the entry is "0 min"
           const loggedHours = parseTimeToHours(timeEntry);
           
-          if (loggedHours > 0 || (dayOfWeek !== 0 && dayOfWeek !== 6)) {
-            const difference = loggedHours - (dayOfWeek === 0 || dayOfWeek === 6 ? 0 : dailyHours);
-            let status: 'ahead' | 'lagging' | 'ontrack';
-            
-            if (dayOfWeek === 0 || dayOfWeek === 6) {
-              // Weekend handling
-              status = loggedHours > 0 ? 'ahead' : 'ontrack';
-              if (loggedHours > 0) hasAheadDays = true;
-            } else {
-              // Weekday handling
-              if (difference > 0) {
-                status = 'ahead';
-                hasAheadDays = true;
-              } else if (difference < 0) {
-                status = 'lagging';
-                hasLaggingDays = true;
-              } else {
-                status = 'ontrack';
-              }
+          // Determine if it's a working day, weekend, or holiday
+          const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; // Sunday = 0, Saturday = 6
+          const isHoliday = loggedHours === 0 && !isWeekend; // 0 min on weekday = holiday
+          
+          let status: 'ahead' | 'lagging' | 'ontrack' | 'weekend' | 'holiday';
+          let difference = 0;
+          
+          if (isWeekend) {
+            status = loggedHours > 0 ? 'ahead' : 'weekend';
+            difference = loggedHours; // Any hours on weekend are extra
+            if (loggedHours > 0) {
+              totalWorkingHoursAhead += loggedHours;
             }
-
-            records.push({
-              date: date.toISOString().split('T')[0],
-              loggedHours,
-              status,
-              difference: dayOfWeek === 0 || dayOfWeek === 6 ? loggedHours : difference
-            });
+          } else if (isHoliday) {
+            status = 'holiday';
+            difference = 0;
+          } else {
+            // Regular working day
+            difference = loggedHours - dailyHours;
+            if (difference > 0) {
+              status = 'ahead';
+              totalWorkingHoursAhead += difference;
+            } else if (difference < 0) {
+              status = 'lagging';
+              totalWorkingHoursBehind += Math.abs(difference);
+            } else {
+              status = 'ontrack';
+            }
           }
+
+          records.push({
+            date: date.toISOString().split('T')[0],
+            loggedHours,
+            status: status as 'ahead' | 'lagging' | 'ontrack',
+            difference,
+            isWeekend,
+            isHoliday
+          });
         });
       } else {
         // Try to parse as CSV
@@ -143,10 +153,10 @@ const Index = () => {
               
               if (difference > 0) {
                 status = 'ahead';
-                hasAheadDays = true;
+                totalWorkingHoursAhead += difference;
               } else if (difference < 0) {
                 status = 'lagging';
-                hasLaggingDays = true;
+                totalWorkingHoursBehind += Math.abs(difference);
               } else {
                 status = 'ontrack';
               }
@@ -168,15 +178,15 @@ const Index = () => {
 
       setAttendanceData(records);
       
-      // Trigger animations based on results
-      if (hasAheadDays && !hasLaggingDays) {
+      // Trigger animations based on overall working hours status
+      const netHoursDifference = totalWorkingHoursAhead - totalWorkingHoursBehind;
+      
+      if (netHoursDifference > 0) {
         triggerConfetti();
-        toast.success('Great job! You\'re ahead on your hours!');
-      } else if (hasLaggingDays && !hasAheadDays) {
+        toast.success(`Great job! You\'re ${netHoursDifference.toFixed(1)} hours ahead!`);
+      } else if (netHoursDifference < 0) {
         triggerCheerUp();
-        toast.info('Keep going! You can catch up!');
-      } else if (hasAheadDays && hasLaggingDays) {
-        toast.info('Mixed results - some days ahead, some behind.');
+        toast.info(`Keep going! You're ${Math.abs(netHoursDifference).toFixed(1)} hours behind, but you can catch up!`);
       } else {
         toast.success('Perfect! You\'re right on track!');
       }
@@ -289,7 +299,7 @@ const Index = () => {
                   </div>
                 </div>
                 <CardDescription>
-                  <div className="flex gap-4 items-center">
+                  <div className="flex gap-4 items-center flex-wrap">
                     <div className="flex items-center gap-1">
                       <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                       <span className="text-sm">Ahead</span>
@@ -301,6 +311,14 @@ const Index = () => {
                     <div className="flex items-center gap-1">
                       <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
                       <span className="text-sm">On Track</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                      <span className="text-sm">Weekend</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                      <span className="text-sm">Holiday</span>
                     </div>
                   </div>
                 </CardDescription>

@@ -17,6 +17,10 @@ export const TimesheetTable: React.FC<TimesheetTableProps> = ({ data }) => {
         return <TrendingDown className="h-4 w-4 text-red-600" />;
       case 'ontrack':
         return <CheckCircle className="h-4 w-4 text-yellow-600" />;
+      case 'weekend':
+        return <span className="text-blue-600">🏖️</span>;
+      case 'holiday':
+        return <span className="text-purple-600">🏖️</span>;
       default:
         return null;
     }
@@ -30,6 +34,10 @@ export const TimesheetTable: React.FC<TimesheetTableProps> = ({ data }) => {
         return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Lagging</Badge>;
       case 'ontrack':
         return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">On Track</Badge>;
+      case 'weekend':
+        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Weekend</Badge>;
+      case 'holiday':
+        return <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100">Holiday</Badge>;
       default:
         return null;
     }

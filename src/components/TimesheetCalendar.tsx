@@ -26,6 +26,10 @@ export const TimesheetCalendar: React.FC<TimesheetCalendarProps> = ({ data }) =>
         return 'bg-red-500 hover:bg-red-600';
       case 'ontrack':
         return 'bg-yellow-500 hover:bg-yellow-600';
+      case 'weekend':
+        return 'bg-blue-500 hover:bg-blue-600';
+      case 'holiday':
+        return 'bg-purple-500 hover:bg-purple-600';
       default:
         return 'bg-muted';
     }
@@ -39,6 +43,10 @@ export const TimesheetCalendar: React.FC<TimesheetCalendarProps> = ({ data }) =>
         return '🔴';
       case 'ontrack':
         return '🟡';
+      case 'weekend':
+        return '🏖️';
+      case 'holiday':
+        return '🏝️';
       default:
         return '⚪';
     }

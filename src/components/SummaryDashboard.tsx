@@ -12,7 +12,14 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({ data }) => {
   const stats = data.reduce((acc, record) => {
     acc.totalDays++;
     acc.totalHoursLogged += record.loggedHours;
-    acc.totalDifference += record.difference;
+    
+    // Only include working days in the calculations
+    const isWorkingDay = !record.isWeekend && !record.isHoliday;
+    
+    if (isWorkingDay) {
+      acc.workingDays++;
+      acc.totalDifference += record.difference;
+    }
 
     switch (record.status) {
       case 'ahead':
@@ -24,14 +31,23 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({ data }) => {
       case 'ontrack':
         acc.daysOnTrack++;
         break;
+      case 'weekend':
+        acc.weekends++;
+        break;
+      case 'holiday':
+        acc.holidays++;
+        break;
     }
 
     return acc;
   }, {
     totalDays: 0,
+    workingDays: 0,
     daysAhead: 0,
     daysLagging: 0,
     daysOnTrack: 0,
+    weekends: 0,
+    holidays: 0,
     totalHoursLogged: 0,
     totalDifference: 0
   });
@@ -57,28 +73,30 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({ data }) => {
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Days</CardTitle>
+          <CardTitle className="text-sm font-medium">Working Days</CardTitle>
           <Calendar className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{stats.totalDays}</div>
+          <div className="text-2xl font-bold">{stats.workingDays}</div>
           <p className="text-xs text-muted-foreground">
-            Days analyzed
+            Out of {stats.totalDays} total days
           </p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Days Ahead</CardTitle>
+          <CardTitle className="text-sm font-medium">Hours Ahead</CardTitle>
           <TrendingUp className="h-4 w-4 text-green-600" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-green-600">{stats.daysAhead}</div>
+          <div className="text-2xl font-bold text-green-600">
+            {stats.totalDifference > 0 ? `+${stats.totalDifference.toFixed(1)}h` : '0h'}
+          </div>
           <div className="flex items-center gap-2">
-            <p className="text-xs text-muted-foreground">Days with extra hours</p>
+            <p className="text-xs text-muted-foreground">Extra working hours</p>
             <Badge className="bg-green-100 text-green-800 text-xs">
-              {((stats.daysAhead / stats.totalDays) * 100).toFixed(0)}%
+              {stats.workingDays > 0 ? ((stats.daysAhead / stats.workingDays) * 100).toFixed(0) : 0}%
             </Badge>
           </div>
         </CardContent>
@@ -86,15 +104,17 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({ data }) => {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Days Behind</CardTitle>
+          <CardTitle className="text-sm font-medium">Hours Behind</CardTitle>
           <TrendingDown className="h-4 w-4 text-red-600" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-red-600">{stats.daysLagging}</div>
+          <div className="text-2xl font-bold text-red-600">
+            {stats.totalDifference < 0 ? `${stats.totalDifference.toFixed(1)}h` : '0h'}
+          </div>
           <div className="flex items-center gap-2">
-            <p className="text-xs text-muted-foreground">Days with fewer hours</p>
+            <p className="text-xs text-muted-foreground">Missing working hours</p>
             <Badge className="bg-red-100 text-red-800 text-xs">
-              {((stats.daysLagging / stats.totalDays) * 100).toFixed(0)}%
+              {stats.workingDays > 0 ? ((stats.daysLagging / stats.workingDays) * 100).toFixed(0) : 0}%
             </Badge>
           </div>
         </CardContent>

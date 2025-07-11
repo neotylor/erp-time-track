@@ -21,7 +21,7 @@ const Index = () => {
   } = useAttendanceData();
 
   return (
-    <div className="min-h-screen bg-background p-4">
+    <div className="min-h-screen bg-background p-4 pb-20 md:pb-4">
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="text-center">
           <h1 className="text-4xl font-bold mb-2">ERP Timesheet Calculator</h1>

@@ -63,7 +63,7 @@ export const TimesheetTable: React.FC<TimesheetTableProps> = ({ data }) => {
           {data.map((record, index) => (
             <TableRow key={index}>
               <TableCell className="font-medium">{record.date}</TableCell>
-              <TableCell>{record.loggedHours.toFixed(1)}h</TableCell>
+              <TableCell>{record.loggedHoursDisplay}</TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
                   {getStatusIcon(record.status)}
@@ -75,7 +75,7 @@ export const TimesheetTable: React.FC<TimesheetTableProps> = ({ data }) => {
                   record.difference > 0 ? 'text-green-600' : 
                   record.difference < 0 ? 'text-red-600' : 'text-yellow-600'
                 }`}>
-                  {formatDifference(record.difference)}
+                  {record.differenceDisplay}
                 </span>
               </TableCell>
             </TableRow>

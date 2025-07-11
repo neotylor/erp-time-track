@@ -53,8 +53,7 @@ export const TimesheetCalendar: React.FC<TimesheetCalendarProps> = ({ data }) =>
   };
 
   const formatTooltipContent = (record: AttendanceRecord) => {
-    const difference = record.difference > 0 ? `+${record.difference.toFixed(1)}` : record.difference.toFixed(1);
-    return `${record.date}\nLogged: ${record.loggedHours.toFixed(1)}h\nDifference: ${difference}h\nStatus: ${record.status}`;
+    return `${record.date}\nLogged: ${record.loggedHoursDisplay}\nDifference: ${record.differenceDisplay}\nStatus: ${record.status}`;
   };
 
   return (
@@ -100,7 +99,7 @@ export const TimesheetCalendar: React.FC<TimesheetCalendarProps> = ({ data }) =>
                               {getStatusEmoji(record.status)}
                             </div>
                             <div className="text-xs">
-                              {record.loggedHours.toFixed(1)}h
+                              {record.loggedHoursDisplay}
                             </div>
                           </div>
                         </TooltipTrigger>

@@ -17,13 +17,15 @@ import { SummaryDashboard } from '@/components/SummaryDashboard';
 import { CheerUpAnimation } from '@/components/CheerUpAnimation';
 
 // Configuration - In a real app, this would come from environment variables
-const DEFAULT_DAILY_HOURS = 8;
+const DEFAULT_DAILY_HOURS = "08:00";
 
 export interface AttendanceRecord {
   date: string;
   loggedHours: number;
+  loggedHoursDisplay: string;
   status: 'ahead' | 'lagging' | 'ontrack' | 'weekend' | 'holiday';
   difference: number;
+  differenceDisplay: string;
   isWeekend?: boolean;
   isHoliday?: boolean;
 }
@@ -68,11 +70,33 @@ const Index = () => {
     return hours + (minutes / 60);
   };
 
+  const parseTimeStringToMinutes = (timeStr: string): number => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours * 60 + minutes;
+  };
+
+  const minutesToTimeString = (minutes: number): string => {
+    const hours = Math.floor(Math.abs(minutes) / 60);
+    const mins = Math.abs(minutes) % 60;
+    
+    if (minutes === 0) return '0 min';
+    if (hours === 0) return `${minutes < 0 ? '-' : ''}${mins} min`;
+    if (mins === 0) return `${minutes < 0 ? '-' : ''}${hours} hr${hours !== 1 ? 's' : ''}`;
+    
+    return `${minutes < 0 ? '-' : ''}${hours} hr${hours !== 1 ? 's' : ''}, ${mins} min`;
+  };
+
+  const formatDifferenceTime = (minutes: number): string => {
+    if (minutes === 0) return '0 min';
+    const sign = minutes > 0 ? '+' : '';
+    return `${sign}${minutesToTimeString(minutes)}`;
+  };
+
   const parseAttendanceData = (data: string) => {
     try {
       const records: AttendanceRecord[] = [];
-      let totalWorkingHoursAhead = 0;
-      let totalWorkingHoursBehind = 0;
+      let totalWorkingMinutesAhead = 0;
+      let totalWorkingMinutesBehind = 0;
 
       // Check if input contains time format (hrs, min)
       if (data.includes('hrs') || data.includes('min')) {
@@ -81,48 +105,52 @@ const Index = () => {
         const currentDate = new Date();
         const currentMonth = currentDate.getMonth();
         const currentYear = currentDate.getFullYear();
+        const dailyMinutes = parseTimeStringToMinutes(dailyHours);
         
         timeEntries.forEach((timeEntry, index) => {
           const dayOfMonth = index + 1;
           const date = new Date(currentYear, currentMonth, dayOfMonth);
           const dayOfWeek = date.getDay();
           const loggedHours = parseTimeToHours(timeEntry);
+          const loggedMinutes = Math.round(loggedHours * 60);
           
           // Determine if it's a working day, weekend, or holiday
           const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; // Sunday = 0, Saturday = 6
-          const isHoliday = loggedHours === 0 && !isWeekend; // 0 min on weekday = holiday
+          const isHoliday = loggedMinutes === 0 && !isWeekend; // 0 min on weekday = holiday
           
           let status: 'ahead' | 'lagging' | 'ontrack' | 'weekend' | 'holiday';
-          let difference = 0;
+          let differenceMinutes = 0;
           
           if (isWeekend) {
-            status = loggedHours > 0 ? 'ahead' : 'weekend';
-            difference = loggedHours; // Any hours on weekend are extra
-            if (loggedHours > 0) {
-              totalWorkingHoursAhead += loggedHours;
+            status = loggedMinutes > 0 ? 'ahead' : 'weekend';
+            differenceMinutes = loggedMinutes; // Any minutes on weekend are extra
+            if (loggedMinutes > 0) {
+              totalWorkingMinutesAhead += loggedMinutes;
             }
           } else if (isHoliday) {
             status = 'holiday';
-            difference = 0;
+            differenceMinutes = 0;
           } else {
             // Regular working day
-            difference = loggedHours - dailyHours;
-            if (difference > 0) {
+            differenceMinutes = loggedMinutes - dailyMinutes;
+            if (differenceMinutes > 0) {
               status = 'ahead';
-              totalWorkingHoursAhead += difference;
-            } else if (difference < 0) {
+              totalWorkingMinutesAhead += differenceMinutes;
+            } else if (differenceMinutes < 0) {
               status = 'lagging';
-              totalWorkingHoursBehind += Math.abs(difference);
+              totalWorkingMinutesBehind += Math.abs(differenceMinutes);
             } else {
               status = 'ontrack';
             }
           }
 
           records.push({
-            date: date.toISOString().split('T')[0],
+            date: date.toLocaleDateString('en-CA'),
             loggedHours,
+            loggedHoursDisplay: minutesToTimeString(loggedMinutes),
             status: status as 'ahead' | 'lagging' | 'ontrack',
-            difference,
+            difference: differenceMinutes / 60, // Keep for backward compatibility
+            differenceDisplay: formatDifferenceTime(differenceMinutes),
             isWeekend,
             isHoliday
           });
@@ -139,6 +167,8 @@ const Index = () => {
           throw new Error('CSV parsing failed');
         }
 
+        const dailyMinutes = parseTimeStringToMinutes(dailyHours);
+
         result.data.forEach((row: any) => {
           // Handle different possible column names
           const dateField = row.Date || row.date || row.DATE || Object.values(row)[0];
@@ -148,15 +178,16 @@ const Index = () => {
           if (dateField && hoursField) {
             const loggedHours = parseFloat(hoursField.toString().replace(/[^\d.]/g, ''));
             if (!isNaN(loggedHours)) {
-              const difference = loggedHours - dailyHours;
+              const loggedMinutes = Math.round(loggedHours * 60);
+              const differenceMinutes = loggedMinutes - dailyMinutes;
               let status: 'ahead' | 'lagging' | 'ontrack';
               
-              if (difference > 0) {
+              if (differenceMinutes > 0) {
                 status = 'ahead';
-                totalWorkingHoursAhead += difference;
-              } else if (difference < 0) {
+                totalWorkingMinutesAhead += differenceMinutes;
+              } else if (differenceMinutes < 0) {
                 status = 'lagging';
-                totalWorkingHoursBehind += Math.abs(difference);
+                totalWorkingMinutesBehind += Math.abs(differenceMinutes);
               } else {
                 status = 'ontrack';
               }
@@ -164,8 +195,10 @@ const Index = () => {
               records.push({
                 date: dateField.toString(),
                 loggedHours,
+                loggedHoursDisplay: minutesToTimeString(loggedMinutes),
                 status,
-                difference
+                difference: differenceMinutes / 60, // Keep for backward compatibility
+                differenceDisplay: formatDifferenceTime(differenceMinutes)
               });
             }
           }
@@ -179,14 +212,14 @@ const Index = () => {
       setAttendanceData(records);
       
       // Trigger animations based on overall working hours status
-      const netHoursDifference = totalWorkingHoursAhead - totalWorkingHoursBehind;
+      const netMinutesDifference = totalWorkingMinutesAhead - totalWorkingMinutesBehind;
       
-      if (netHoursDifference > 0) {
+      if (netMinutesDifference > 0) {
         triggerConfetti();
-        toast.success(`Great job! You\'re ${netHoursDifference.toFixed(1)} hours ahead!`);
-      } else if (netHoursDifference < 0) {
+        toast.success(`Great job! You're ${minutesToTimeString(netMinutesDifference)} ahead!`);
+      } else if (netMinutesDifference < 0) {
         triggerCheerUp();
-        toast.info(`Keep going! You're ${Math.abs(netHoursDifference).toFixed(1)} hours behind, but you can catch up!`);
+        toast.info(`Keep going! You're ${minutesToTimeString(Math.abs(netMinutesDifference))} behind, but you can catch up!`);
       } else {
         toast.success('Perfect! You\'re right on track!');
       }
@@ -245,13 +278,10 @@ const Index = () => {
               <Label htmlFor="dailyHours">Expected Daily Hours:</Label>
               <Input
                 id="dailyHours"
-                type="number"
+                type="time"
                 value={dailyHours}
-                onChange={(e) => setDailyHours(parseFloat(e.target.value) || DEFAULT_DAILY_HOURS)}
-                className="w-24"
-                min="1"
-                max="24"
-                step="0.5"
+                onChange={(e) => setDailyHours(e.target.value || DEFAULT_DAILY_HOURS)}
+                className="w-32"
               />
             </div>
             

@@ -18,18 +18,18 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({ data }) => {
     
     if (isWorkingDay) {
       acc.workingDays++;
-      acc.totalDifference += record.difference;
+      acc.totalDifferenceMinutes += Math.round(record.difference * 60);
     }
 
     switch (record.status) {
       case 'ahead':
-        acc.daysAhead++;
+        if (isWorkingDay) acc.daysAhead++;
         break;
       case 'lagging':
-        acc.daysLagging++;
+        if (isWorkingDay) acc.daysLagging++;
         break;
       case 'ontrack':
-        acc.daysOnTrack++;
+        if (isWorkingDay) acc.daysOnTrack++;
         break;
       case 'weekend':
         acc.weekends++;
@@ -49,18 +49,29 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({ data }) => {
     weekends: 0,
     holidays: 0,
     totalHoursLogged: 0,
-    totalDifference: 0
+    totalDifferenceMinutes: 0
   });
 
-  const formatHoursDifference = (hours: number) => {
-    const sign = hours > 0 ? '+' : '';
-    return `${sign}${hours.toFixed(1)}h`;
+  const minutesToTimeString = (minutes: number): string => {
+    const hours = Math.floor(Math.abs(minutes) / 60);
+    const mins = Math.abs(minutes) % 60;
+    
+    if (minutes === 0) return '0 min';
+    if (hours === 0) return `${minutes < 0 ? '-' : ''}${mins} min`;
+    if (mins === 0) return `${minutes < 0 ? '-' : ''}${hours} hr${hours !== 1 ? 's' : ''}`;
+    
+    return `${minutes < 0 ? '-' : ''}${hours} hr${hours !== 1 ? 's' : ''}, ${mins} min`;
+  };
+
+  const formatTimeDifference = (minutes: number) => {
+    const sign = minutes > 0 ? '+' : '';
+    return `${sign}${minutesToTimeString(minutes)}`;
   };
 
   const getOverallStatus = () => {
-    if (stats.totalDifference > 0) {
+    if (stats.totalDifferenceMinutes > 0) {
       return { status: 'ahead', color: 'text-green-600', bgColor: 'bg-green-50' };
-    } else if (stats.totalDifference < 0) {
+    } else if (stats.totalDifferenceMinutes < 0) {
       return { status: 'behind', color: 'text-red-600', bgColor: 'bg-red-50' };
     } else {
       return { status: 'on track', color: 'text-yellow-600', bgColor: 'bg-yellow-50' };
@@ -91,10 +102,10 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({ data }) => {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-green-600">
-            {stats.totalDifference > 0 ? `+${stats.totalDifference.toFixed(1)}h` : '0h'}
+            {stats.totalDifferenceMinutes > 0 ? formatTimeDifference(stats.totalDifferenceMinutes) : '0 min'}
           </div>
           <div className="flex items-center gap-2">
-            <p className="text-xs text-muted-foreground">Extra working hours</p>
+            <p className="text-xs text-muted-foreground">Extra working time</p>
             <Badge className="bg-green-100 text-green-800 text-xs">
               {stats.workingDays > 0 ? ((stats.daysAhead / stats.workingDays) * 100).toFixed(0) : 0}%
             </Badge>
@@ -109,10 +120,10 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({ data }) => {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-red-600">
-            {stats.totalDifference < 0 ? `${stats.totalDifference.toFixed(1)}h` : '0h'}
+            {stats.totalDifferenceMinutes < 0 ? formatTimeDifference(stats.totalDifferenceMinutes) : '0 min'}
           </div>
           <div className="flex items-center gap-2">
-            <p className="text-xs text-muted-foreground">Missing working hours</p>
+            <p className="text-xs text-muted-foreground">Missing working time</p>
             <Badge className="bg-red-100 text-red-800 text-xs">
               {stats.workingDays > 0 ? ((stats.daysLagging / stats.workingDays) * 100).toFixed(0) : 0}%
             </Badge>
@@ -127,10 +138,10 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({ data }) => {
         </CardHeader>
         <CardContent>
           <div className={`text-2xl font-bold ${overallStatus.color}`}>
-            {formatHoursDifference(stats.totalDifference)}
+            {formatTimeDifference(stats.totalDifferenceMinutes)}
           </div>
           <p className="text-xs text-muted-foreground">
-            Total hours {overallStatus.status}
+            Total time {overallStatus.status}
           </p>
         </CardContent>
       </Card>

@@ -1,8 +1,10 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, CheckCircle, Calendar } from 'lucide-react';
-import { AttendanceRecord } from '@/pages/Index';
+import { AttendanceRecord } from '@/types/attendance';
+import { minutesToTimeString } from '@/utils/timeUtils';
 
 interface SummaryDashboardProps {
   data: AttendanceRecord[];
@@ -11,14 +13,17 @@ interface SummaryDashboardProps {
 export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({ data }) => {
   const stats = data.reduce((acc, record) => {
     acc.totalDays++;
-    acc.totalHoursLogged += record.loggedHours;
+    acc.totalMinutesLogged += record.loggedMinutes;
     
     // Only include working days in the calculations
     const isWorkingDay = !record.isWeekend && !record.isHoliday;
     
     if (isWorkingDay) {
       acc.workingDays++;
-      acc.totalDifferenceMinutes += Math.round(record.difference * 60);
+      acc.totalDifferenceMinutes += record.differenceMinutes;
+    } else if (record.isWeekend && record.loggedMinutes > 0) {
+      // Weekend work counts as ahead
+      acc.totalDifferenceMinutes += record.loggedMinutes;
     }
 
     switch (record.status) {
@@ -48,20 +53,9 @@ export const SummaryDashboard: React.FC<SummaryDashboardProps> = ({ data }) => {
     daysOnTrack: 0,
     weekends: 0,
     holidays: 0,
-    totalHoursLogged: 0,
+    totalMinutesLogged: 0,
     totalDifferenceMinutes: 0
   });
-
-  const minutesToTimeString = (minutes: number): string => {
-    const hours = Math.floor(Math.abs(minutes) / 60);
-    const mins = Math.abs(minutes) % 60;
-    
-    if (minutes === 0) return '0 min';
-    if (hours === 0) return `${minutes < 0 ? '-' : ''}${mins} min`;
-    if (mins === 0) return `${minutes < 0 ? '-' : ''}${hours} hr${hours !== 1 ? 's' : ''}`;
-    
-    return `${minutes < 0 ? '-' : ''}${hours} hr${hours !== 1 ? 's' : ''}, ${mins} min`;
-  };
 
   const formatTimeDifference = (minutes: number) => {
     const sign = minutes > 0 ? '+' : '';

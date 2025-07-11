@@ -1,8 +1,9 @@
+
 import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, CheckCircle } from 'lucide-react';
-import { AttendanceRecord } from '@/pages/Index';
+import { AttendanceRecord } from '@/types/attendance';
 
 interface TimesheetTableProps {
   data: AttendanceRecord[];
@@ -43,11 +44,6 @@ export const TimesheetTable: React.FC<TimesheetTableProps> = ({ data }) => {
     }
   };
 
-  const formatDifference = (difference: number) => {
-    const sign = difference > 0 ? '+' : '';
-    return `${sign}${difference.toFixed(1)}h`;
-  };
-
   return (
     <div className="rounded-md border">
       <Table>
@@ -72,8 +68,8 @@ export const TimesheetTable: React.FC<TimesheetTableProps> = ({ data }) => {
               </TableCell>
               <TableCell>
                 <span className={`font-medium ${
-                  record.difference > 0 ? 'text-green-600' : 
-                  record.difference < 0 ? 'text-red-600' : 'text-yellow-600'
+                  record.differenceMinutes > 0 ? 'text-green-600' : 
+                  record.differenceMinutes < 0 ? 'text-red-600' : 'text-yellow-600'
                 }`}>
                   {record.differenceDisplay}
                 </span>

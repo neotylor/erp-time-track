@@ -1,5 +1,5 @@
 import React from 'react';
-import { AttendanceRecord } from '@/pages/Index';
+import { AttendanceRecord } from '@/types/attendance';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface TimesheetCalendarProps {
@@ -67,21 +67,18 @@ export const TimesheetCalendar: React.FC<TimesheetCalendarProps> = ({ data }) =>
             <div key={monthKey} className="space-y-3">
               <h3 className="text-lg font-semibold">{monthName}</h3>
               <div className="grid grid-cols-7 gap-2">
-                {/* Day headers */}
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                   <div key={day} className="text-center text-sm font-medium text-muted-foreground p-2">
                     {day}
                   </div>
                 ))}
                 
-                {/* Calendar days */}
                 {records.map((record, index) => {
                   const date = new Date(record.date);
                   const dayOfWeek = date.getDay();
                   
                   return (
                     <React.Fragment key={index}>
-                      {/* Add empty cells for proper alignment if needed (only for first item) */}
                       {index === 0 && [...Array(dayOfWeek)].map((_, i) => (
                         <div key={`empty-${i}`} className="p-2"></div>
                       ))}

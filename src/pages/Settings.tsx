@@ -5,14 +5,17 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Settings as SettingsIcon, Palette, Bell, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useTheme } from 'next-themes';
 
 const Settings: React.FC = () => {
+  const { theme, setTheme } = useTheme();
   const [notifications, setNotifications] = React.useState(true);
-  const [darkMode, setDarkMode] = React.useState(false);
   const [autoSave, setAutoSave] = React.useState(true);
 
+  const isDarkMode = theme === 'dark';
+
   return (
-    <div className="min-h-screen bg-background p-4 pb-20 md:pb-4">
+    <div className="min-h-screen bg-background p-4 pb-24 md:pb-4">
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="text-center mb-8">
           <SettingsIcon className="h-16 w-16 mx-auto mb-4 text-primary" />
@@ -64,8 +67,8 @@ const Settings: React.FC = () => {
                 <Label htmlFor="dark-mode">Dark mode</Label>
                 <Switch
                   id="dark-mode"
-                  checked={darkMode}
-                  onCheckedChange={setDarkMode}
+                  checked={isDarkMode}
+                  onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
                 />
               </div>
             </CardContent>

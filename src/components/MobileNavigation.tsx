@@ -13,7 +13,7 @@ const MobileNavigation: React.FC = () => {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-background border-t border-border z-50 md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t border-border z-50 md:hidden safe-area-inset-bottom">
       <div className="flex items-center justify-around h-16 px-2">
         {navItems.map(({ to, icon: Icon, label }) => (
           <NavLink
@@ -22,15 +22,15 @@ const MobileNavigation: React.FC = () => {
             className={({ isActive }) =>
               cn(
                 "flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-colors",
-                "text-muted-foreground text-xs font-medium",
+                "text-muted-foreground text-xs font-medium min-w-0 flex-1",
                 isActive
                   ? "text-primary bg-primary/10"
                   : "hover:text-foreground hover:bg-accent"
               )
             }
           >
-            <Icon className="h-5 w-5" />
-            <span>{label}</span>
+            <Icon className="h-5 w-5 flex-shrink-0" />
+            <span className="truncate">{label}</span>
           </NavLink>
         ))}
       </div>

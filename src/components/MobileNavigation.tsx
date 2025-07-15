@@ -1,12 +1,13 @@
 
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Calculator, Info, Settings } from 'lucide-react';
+import { Home, Calculator, Info, Settings, CheckSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const MobileNavigation: React.FC = () => {
   const navItems = [
     { to: '/', icon: Home, label: 'Home' },
+    { to: '/todo', icon: CheckSquare, label: 'To-Do' },
     { to: '/calculator', icon: Calculator, label: 'Calculator' },
     { to: '/about', icon: Info, label: 'About' },
     { to: '/settings', icon: Settings, label: 'Settings' }

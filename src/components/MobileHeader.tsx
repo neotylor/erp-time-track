@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Calculator, Sun, Moon } from 'lucide-react';
+import { ArrowLeft, CheckSquare, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from 'next-themes';
 
@@ -13,7 +13,9 @@ const MobileHeader: React.FC = () => {
   const getPageTitle = () => {
     switch (location.pathname) {
       case '/':
-        return 'Home';
+        return 'TaskFlow Pro';
+      case '/todo':
+        return 'Smart To-Do';
       case '/calculator':
         return 'Calculator';
       case '/about':
@@ -21,7 +23,7 @@ const MobileHeader: React.FC = () => {
       case '/settings':
         return 'Settings';
       default:
-        return 'Timesheet Calculator';
+        return 'TaskFlow Pro';
     }
   };
 
@@ -40,7 +42,7 @@ const MobileHeader: React.FC = () => {
             <ArrowLeft className="h-5 w-5" />
           </Button>
         ) : (
-          <Calculator className="h-5 w-5 text-primary mr-2" />
+          <CheckSquare className="h-5 w-5 text-primary mr-2" />
         )}
         <span className="text-lg font-semibold">{getPageTitle()}</span>
       </div>

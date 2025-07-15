@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Calculator, Info, Settings, Sun, Moon } from 'lucide-react';
+import { Home, Calculator, Info, Settings, Sun, Moon, CheckSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useTheme } from 'next-themes';
@@ -11,6 +11,7 @@ const DesktopNavigation: React.FC = () => {
 
   const navItems = [
     { to: '/', icon: Home, label: 'Home' },
+    { to: '/todo', icon: CheckSquare, label: 'To-Do' },
     { to: '/calculator', icon: Calculator, label: 'Calculator' },
     { to: '/about', icon: Info, label: 'About' },
     { to: '/settings', icon: Settings, label: 'Settings' }
@@ -19,8 +20,8 @@ const DesktopNavigation: React.FC = () => {
   return (
     <header className="hidden md:flex items-center justify-between px-6 py-4 border-b border-border bg-background">
       <div className="flex items-center space-x-2">
-        <Calculator className="h-6 w-6 text-primary" />
-        <span className="text-xl font-bold">Timesheet Calculator</span>
+        <CheckSquare className="h-6 w-6 text-primary" />
+        <span className="text-xl font-bold">TaskFlow Pro</span>
       </div>
       
       <nav className="flex items-center space-x-1">

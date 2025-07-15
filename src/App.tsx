@@ -18,6 +18,7 @@ import MobileHeader from "./components/MobileHeader";
 import ProductivityHub from "./components/ProductivityHub";
 import TodoPage from "./pages/TodoPage";
 import NotesPage from "./pages/NotesPage";
+import EMIPage from "./pages/EMIPage";
 
 const queryClient = new QueryClient();
 
@@ -58,7 +59,7 @@ const App = () => {
                     <Route path="/about" element={<About />} />
                     <Route path="/settings" element={<Settings />} />
                     {/* Placeholder routes for other tools */}
-                    <Route path="/emi" element={<div className="p-8 text-center"><h1 className="text-2xl">EMI Calculator - Coming Soon!</h1></div>} />
+                    <Route path="/emi" element={<EMIPage />} />
                     <Route path="/pomodoro" element={<div className="p-8 text-center"><h1 className="text-2xl">Pomodoro Timer - Coming Soon!</h1></div>} />
                     <Route path="/goals" element={<div className="p-8 text-center"><h1 className="text-2xl">Goal Tracker - Coming Soon!</h1></div>} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -5,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
 import { ThemeProvider } from "next-themes";
+import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import About from "./pages/About";
 import Settings from "./pages/Settings";
@@ -15,6 +17,7 @@ import DesktopNavigation from "./components/DesktopNavigation";
 import MobileHeader from "./components/MobileHeader";
 import ProductivityHub from "./components/ProductivityHub";
 import TodoPage from "./pages/TodoPage";
+import NotesPage from "./pages/NotesPage";
 
 const queryClient = new QueryClient();
 
@@ -37,35 +40,37 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <div className="min-h-screen flex flex-col">
-              <DesktopNavigation />
-              <MobileHeader />
-              
-              <main className="flex-1">
-                <Routes>
-                  <Route path="/" element={<ProductivityHub />} />
-                  <Route path="/todo" element={<TodoPage />} />
-                  <Route path="/calculator" element={<Index />} />
-                  <Route path="/about" element={<About />} />
-                  <Route path="/settings" element={<Settings />} />
-                  {/* Placeholder routes for other tools */}
-                  <Route path="/emi" element={<div className="p-8 text-center"><h1 className="text-2xl">EMI Calculator - Coming Soon!</h1></div>} />
-                  <Route path="/notes" element={<div className="p-8 text-center"><h1 className="text-2xl">Quick Notes - Coming Soon!</h1></div>} />
-                  <Route path="/pomodoro" element={<div className="p-8 text-center"><h1 className="text-2xl">Pomodoro Timer - Coming Soon!</h1></div>} />
-                  <Route path="/goals" element={<div className="p-8 text-center"><h1 className="text-2xl">Goal Tracker - Coming Soon!</h1></div>} />
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </main>
-              
-              <MobileNavigation />
-            </div>
-          </BrowserRouter>
-        </TooltipProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <div className="min-h-screen flex flex-col">
+                <DesktopNavigation />
+                <MobileHeader />
+                
+                <main className="flex-1">
+                  <Routes>
+                    <Route path="/" element={<ProductivityHub />} />
+                    <Route path="/todo" element={<TodoPage />} />
+                    <Route path="/notes" element={<NotesPage />} />
+                    <Route path="/calculator" element={<Index />} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/settings" element={<Settings />} />
+                    {/* Placeholder routes for other tools */}
+                    <Route path="/emi" element={<div className="p-8 text-center"><h1 className="text-2xl">EMI Calculator - Coming Soon!</h1></div>} />
+                    <Route path="/pomodoro" element={<div className="p-8 text-center"><h1 className="text-2xl">Pomodoro Timer - Coming Soon!</h1></div>} />
+                    <Route path="/goals" element={<div className="p-8 text-center"><h1 className="text-2xl">Goal Tracker - Coming Soon!</h1></div>} />
+                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </main>
+                
+                <MobileNavigation />
+              </div>
+            </BrowserRouter>
+          </TooltipProvider>
+        </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

@@ -16,6 +16,8 @@ const MobileHeader: React.FC = () => {
         return 'TaskFlow Pro';
       case '/todo':
         return 'Smart To-Do';
+      case '/notes':
+        return 'Notes';
       case '/calculator':
         return 'Calculator';
       case '/about':

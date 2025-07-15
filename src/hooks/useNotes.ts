@@ -24,7 +24,14 @@ export const useNotes = () => {
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
-      setNotes(data || []);
+      
+      // Transform the data to match our Note type
+      const transformedNotes: Note[] = (data || []).map(note => ({
+        ...note,
+        color_label: (note.color_label as Note['color_label']) || 'default'
+      }));
+      
+      setNotes(transformedNotes);
     } catch (error) {
       console.error('Error fetching notes:', error);
       toast.error('Failed to fetch notes');
@@ -52,9 +59,15 @@ export const useNotes = () => {
 
       if (error) throw error;
       
-      setNotes(prev => [data, ...prev]);
+      // Transform the data to match our Note type
+      const transformedNote: Note = {
+        ...data,
+        color_label: (data.color_label as Note['color_label']) || 'default'
+      };
+      
+      setNotes(prev => [transformedNote, ...prev]);
       toast.success('Note created successfully');
-      return data;
+      return transformedNote;
     } catch (error) {
       console.error('Error creating note:', error);
       toast.error('Failed to create note');
@@ -79,8 +92,14 @@ export const useNotes = () => {
 
       if (error) throw error;
 
+      // Transform the data to match our Note type
+      const transformedNote: Note = {
+        ...data,
+        color_label: (data.color_label as Note['color_label']) || 'default'
+      };
+
       setNotes(prev => prev.map(note => 
-        note.id === id ? data : note
+        note.id === id ? transformedNote : note
       ));
       
       toast.success('Note updated successfully');

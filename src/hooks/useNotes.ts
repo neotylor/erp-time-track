@@ -29,7 +29,7 @@ export const useNotes = () => {
       const transformedNotes: Note[] = (data || []).map(note => ({
         ...note,
         color_label: (note.color_label as Note['color_label']) || 'default'
-      }));
+      })) as Note[];
       
       setNotes(transformedNotes);
     } catch (error) {

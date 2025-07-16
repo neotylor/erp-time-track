@@ -3,16 +3,34 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Settings as SettingsIcon, Palette, Bell, Download } from 'lucide-react';
+import { Settings as SettingsIcon, Palette, Bell, Download, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from 'next-themes';
+import { useAuth } from '@/hooks/useAuth';
+import AuthForm from '@/components/AuthForm';
 
 const Settings: React.FC = () => {
   const { theme, setTheme } = useTheme();
+  const { user, signOut, isAuthenticated, loading } = useAuth();
   const [notifications, setNotifications] = React.useState(true);
   const [autoSave, setAutoSave] = React.useState(true);
 
   const isDarkMode = theme === 'dark';
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background p-4 pb-24 md:pb-4 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background p-4 pb-24 md:pb-4">
@@ -21,11 +39,59 @@ const Settings: React.FC = () => {
           <SettingsIcon className="h-16 w-16 mx-auto mb-4 text-primary" />
           <h1 className="text-3xl md:text-4xl font-bold mb-2">Settings</h1>
           <p className="text-lg text-muted-foreground">
-            Customize your timesheet calculator experience
+            Customize your TaskFlow Pro experience
           </p>
         </div>
 
         <div className="grid gap-6">
+          {/* Account Settings */}
+          <Card>
+            <CardHeader>
+              <User className="h-6 w-6 text-primary mb-2" />
+              <CardTitle>Account</CardTitle>
+              <CardDescription>
+                {isAuthenticated 
+                  ? "Manage your account and sync settings"
+                  : "Sign in to sync your data across devices"
+                }
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isAuthenticated ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                    <div>
+                      <p className="font-medium">{user?.email}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Data synced across devices
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSignOut}
+                      className="flex items-center gap-2"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Sign Out
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      <strong>Note:</strong> You can use all features without signing in. 
+                      Your data will be stored locally on this device only. 
+                      Sign in to sync your data across multiple devices.
+                    </p>
+                  </div>
+                  <AuthForm />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <Bell className="h-6 w-6 text-primary mb-2" />
@@ -79,7 +145,7 @@ const Settings: React.FC = () => {
               <Download className="h-6 w-6 text-primary mb-2" />
               <CardTitle>Data Management</CardTitle>
               <CardDescription>
-                Export and manage your timesheet data
+                Export and manage your data
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -87,8 +153,13 @@ const Settings: React.FC = () => {
                 Export Data as CSV
               </Button>
               <Button variant="outline" className="w-full">
-                Clear All Data
+                Clear All Local Data
               </Button>
+              {isAuthenticated && (
+                <Button variant="outline" className="w-full">
+                  Sync All Data Now
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>

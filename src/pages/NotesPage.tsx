@@ -5,7 +5,7 @@ import AuthForm from '@/components/AuthForm';
 import NotesApp from '@/components/NotesApp';
 
 const NotesPage = () => {
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
 
   if (loading) {
     return (
@@ -15,7 +15,8 @@ const NotesPage = () => {
     );
   }
 
-  return user ? <NotesApp /> : <AuthForm />;
+  // Always show NotesApp - authentication is optional
+  return <NotesApp />;
 };
 
 export default NotesPage;

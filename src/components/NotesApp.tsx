@@ -10,7 +10,7 @@ import { Plus, LogOut, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const NotesApp = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAuthenticated } = useAuth();
   const { createNote } = useNotes();
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
 
@@ -40,20 +40,28 @@ const NotesApp = () => {
           </div>
           
           <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={user?.user_metadata?.avatar_url} />
-                <AvatarFallback>
-                  <User className="h-4 w-4" />
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-sm text-gray-600">
-                {user?.user_metadata?.full_name || user?.email}
-              </span>
-            </div>
-            <Button variant="ghost" size="sm" onClick={handleSignOut}>
-              <LogOut className="h-4 w-4" />
-            </Button>
+            {isAuthenticated && user ? (
+              <>
+                <div className="flex items-center space-x-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user?.user_metadata?.avatar_url} />
+                    <AvatarFallback>
+                      <User className="h-4 w-4" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm text-gray-600">
+                    {user?.user_metadata?.full_name || user?.email}
+                  </span>
+                </div>
+                <Button variant="ghost" size="sm" onClick={handleSignOut}>
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </>
+            ) : (
+              <div className="text-sm text-gray-600">
+                Notes saved locally - Sign in to sync across devices
+              </div>
+            )}
           </div>
         </div>
       </header>

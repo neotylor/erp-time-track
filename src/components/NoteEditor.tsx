@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNotes } from '@/hooks/useNotes';
 import { Note } from '@/types/note';
 import { Button } from '@/components/ui/button';
@@ -30,22 +30,39 @@ const NoteEditor = ({ noteId, onClose }: NoteEditorProps) => {
   const [content, setContent] = useState('');
   const [colorLabel, setColorLabel] = useState<Note['color_label']>('default');
   const [isFavorited, setIsFavorited] = useState(false);
+  
+  // Track if user is actively editing to prevent state reset
+  const isEditingRef = useRef(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout>();
 
+  // Initialize note data only when noteId changes or note is first loaded
   useEffect(() => {
     const foundNote = notes.find(n => n.id === noteId);
-    if (foundNote) {
+    if (foundNote && (!note || note.id !== foundNote.id)) {
       setNote(foundNote);
-      setTitle(foundNote.title);
-      setContent(foundNote.content);
-      setColorLabel(foundNote.color_label);
-      setIsFavorited(foundNote.is_favorited);
+      // Only update local state if user is not actively editing
+      if (!isEditingRef.current) {
+        setTitle(foundNote.title);
+        setContent(foundNote.content);
+        setColorLabel(foundNote.color_label);
+        setIsFavorited(foundNote.is_favorited);
+      }
     }
-  }, [noteId, notes]);
+  }, [noteId, notes, note]);
 
+  // Auto-save with debounce
   useEffect(() => {
     if (!note) return;
 
-    const timeoutId = setTimeout(() => {
+    // Clear existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    // Set editing flag
+    isEditingRef.current = true;
+
+    saveTimeoutRef.current = setTimeout(() => {
       const hasChanges = 
         title !== note.title ||
         content !== note.content ||
@@ -60,10 +77,27 @@ const NoteEditor = ({ noteId, onClose }: NoteEditorProps) => {
           is_favorited: isFavorited
         });
       }
+      
+      // Clear editing flag after save
+      isEditingRef.current = false;
     }, 500);
 
-    return () => clearTimeout(timeoutId);
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
   }, [title, content, colorLabel, isFavorited, note, updateNote]);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      isEditingRef.current = false;
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   if (!note) {
     return (

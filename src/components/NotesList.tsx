@@ -3,13 +3,14 @@ import React from 'react';
 import { useNotes } from '@/hooks/useNotes';
 import { Note } from '@/types/note';
 import { formatDistanceToNow } from 'date-fns';
-import { Heart, Trash2 } from 'lucide-react';
+import { Heart, Trash2, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface NotesListProps {
   selectedNoteId: string | null;
   onSelectNote: (id: string) => void;
+  collapsed?: boolean;
 }
 
 const colorStyles = {
@@ -27,16 +28,36 @@ const NoteCard = ({
   isSelected, 
   onSelect, 
   onDelete, 
-  onToggleFavorite 
+  onToggleFavorite,
+  collapsed = false
 }: { 
   note: Note;
   isSelected: boolean;
   onSelect: () => void;
   onDelete: () => void;
   onToggleFavorite: () => void;
+  collapsed?: boolean;
 }) => {
   const timeAgo = formatDistanceToNow(new Date(note.updated_at), { addSuffix: true });
   const preview = note.content.replace(/[#*`]/g, '').slice(0, 100);
+
+  if (collapsed) {
+    return (
+      <div
+        className={`
+          p-2 border-l-4 cursor-pointer transition-all hover:shadow-sm mx-1 mb-1 rounded-r
+          ${colorStyles[note.color_label]}
+          ${isSelected ? 'ring-2 ring-blue-200' : ''}
+        `}
+        onClick={onSelect}
+        title={note.title}
+      >
+        <div className="flex items-center justify-center">
+          <FileText className="h-4 w-4 text-gray-600" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -92,7 +113,7 @@ const NoteCard = ({
   );
 };
 
-const NotesList = ({ selectedNoteId, onSelectNote }: NotesListProps) => {
+const NotesList = ({ selectedNoteId, onSelectNote, collapsed = false }: NotesListProps) => {
   const { notes, loading, updateNote, deleteNote } = useNotes();
 
   const handleToggleFavorite = async (note: Note) => {
@@ -109,17 +130,23 @@ const NotesList = ({ selectedNoteId, onSelectNote }: NotesListProps) => {
   if (loading) {
     return (
       <div className="p-4 text-center text-gray-500">
-        Loading notes...
+        <div className="animate-pulse">Loading...</div>
       </div>
     );
   }
 
   if (notes.length === 0) {
     return (
-      <div className="p-4 text-center text-gray-500">
-        <div className="text-4xl mb-2">📝</div>
-        <p>No notes yet</p>
-        <p className="text-xs mt-1">Create your first note to get started</p>
+      <div className={`p-4 text-center text-gray-500 ${collapsed ? 'px-2' : ''}`}>
+        {collapsed ? (
+          <FileText className="h-6 w-6 mx-auto text-gray-400" />
+        ) : (
+          <>
+            <div className="text-4xl mb-2">📝</div>
+            <p>No notes yet</p>
+            <p className="text-xs mt-1">Create your first note to get started</p>
+          </>
+        )}
       </div>
     );
   }
@@ -134,7 +161,7 @@ const NotesList = ({ selectedNoteId, onSelectNote }: NotesListProps) => {
 
   return (
     <ScrollArea className="h-full">
-      <div className="space-y-1">
+      <div className={collapsed ? "space-y-0" : "space-y-1"}>
         {sortedNotes.map((note) => (
           <NoteCard
             key={note.id}
@@ -143,6 +170,7 @@ const NotesList = ({ selectedNoteId, onSelectNote }: NotesListProps) => {
             onSelect={() => onSelectNote(note.id)}
             onDelete={() => handleDelete(note.id)}
             onToggleFavorite={() => handleToggleFavorite(note)}
+            collapsed={collapsed}
           />
         ))}
       </div>

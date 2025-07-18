@@ -48,22 +48,10 @@ export const useNotes = () => {
         color_label: (note.color_label as Note['color_label']) || 'default'
       })) as Note[];
       
-      // Merge server notes with local notes, server takes precedence
-      const localNotes = JSON.parse(localStorage.getItem('taskflow-notes') || '[]');
-      const mergedNotes = [...transformedNotes];
-      
-      // Add local-only notes that don't exist on server
-      localNotes.forEach((localNote: Note) => {
-        if (!transformedNotes.find(serverNote => serverNote.id === localNote.id)) {
-          mergedNotes.push(localNote);
-        }
-      });
-      
-      setNotes(mergedNotes);
-      localStorage.setItem('taskflow-notes', JSON.stringify(mergedNotes));
+      setNotes(transformedNotes);
+      localStorage.setItem('taskflow-notes', JSON.stringify(transformedNotes));
     } catch (error) {
       console.error('Error fetching notes:', error);
-      toast.error('Failed to sync notes from server');
     } finally {
       setLoading(false);
     }
@@ -94,7 +82,7 @@ export const useNotes = () => {
       updated_at: new Date().toISOString()
     };
 
-    // Add to local state first
+    // Add to local state first for immediate UI update
     setNotes(prev => [newNote, ...prev]);
     
     // Sync to server if authenticated
@@ -112,20 +100,16 @@ export const useNotes = () => {
           }]);
 
         if (error) throw error;
-        toast.success('Note created and synced');
       } catch (error) {
         console.error('Error syncing note to server:', error);
-        toast.success('Note created locally (will sync when online)');
       }
-    } else {
-      toast.success('Note created locally');
     }
     
     return newNote;
   };
 
-  // Update a note
-  const updateNote = async (id: string, updates: UpdateNoteData) => {
+  // Update a note with conditional sync
+  const updateNote = async (id: string, updates: UpdateNoteData, showToast = false) => {
     const updatedNote = {
       ...updates,
       updated_at: new Date().toISOString()
@@ -136,7 +120,7 @@ export const useNotes = () => {
       note.id === id ? { ...note, ...updatedNote } : note
     ));
 
-    // Sync to server if authenticated
+    // Sync to server if authenticated and changes are significant
     if (isAuthenticated) {
       try {
         const { error } = await supabase
@@ -145,13 +129,16 @@ export const useNotes = () => {
           .eq('id', id);
 
         if (error) throw error;
-        toast.success('Note updated and synced');
+        
+        if (showToast) {
+          toast.success('Note synced');
+        }
       } catch (error) {
         console.error('Error syncing note update to server:', error);
-        toast.success('Note updated locally (will sync when online)');
+        if (showToast) {
+          toast.error('Failed to sync note');
+        }
       }
-    } else {
-      toast.success('Note updated locally');
     }
   };
 
@@ -169,13 +156,9 @@ export const useNotes = () => {
           .eq('id', id);
 
         if (error) throw error;
-        toast.success('Note deleted and synced');
       } catch (error) {
         console.error('Error syncing note deletion to server:', error);
-        toast.success('Note deleted locally (will sync when online)');
       }
-    } else {
-      toast.success('Note deleted locally');
     }
   };
 

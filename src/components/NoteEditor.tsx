@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { X, Heart, Palette } from 'lucide-react';
+import { X, Heart, Palette, Save } from 'lucide-react';
 
 interface NoteEditorProps {
   noteId: string;
@@ -30,79 +30,66 @@ const NoteEditor = ({ noteId, onClose }: NoteEditorProps) => {
   const [content, setContent] = useState('');
   const [colorLabel, setColorLabel] = useState<Note['color_label']>('default');
   const [isFavorited, setIsFavorited] = useState(false);
-  
-  // Track if user is actively editing to prevent state reset
-  const isEditingRef = useRef(false);
-  const saveTimeoutRef = useRef<NodeJS.Timeout>();
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Initialize note data only when noteId changes or note is first loaded
+  // Initialize note data when noteId changes
   useEffect(() => {
     const foundNote = notes.find(n => n.id === noteId);
-    if (foundNote && (!note || note.id !== foundNote.id)) {
+    if (foundNote) {
       setNote(foundNote);
-      // Only update local state if user is not actively editing
-      if (!isEditingRef.current) {
-        setTitle(foundNote.title);
-        setContent(foundNote.content);
-        setColorLabel(foundNote.color_label);
-        setIsFavorited(foundNote.is_favorited);
-      }
+      setTitle(foundNote.title);
+      setContent(foundNote.content);
+      setColorLabel(foundNote.color_label);
+      setIsFavorited(foundNote.is_favorited);
+      setHasUnsavedChanges(false);
     }
-  }, [noteId, notes, note]);
+  }, [noteId, notes]);
 
-  // Auto-save with debounce
+  // Track changes
   useEffect(() => {
     if (!note) return;
+    
+    const hasChanges = 
+      title !== note.title ||
+      content !== note.content ||
+      colorLabel !== note.color_label ||
+      isFavorited !== note.is_favorited;
 
-    // Clear existing timeout
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
+    setHasUnsavedChanges(hasChanges);
+  }, [title, content, colorLabel, isFavorited, note]);
 
-    // Set editing flag
-    isEditingRef.current = true;
+  const handleSave = async () => {
+    if (!note || !hasUnsavedChanges) return;
 
-    saveTimeoutRef.current = setTimeout(() => {
-      const hasChanges = 
-        title !== note.title ||
-        content !== note.content ||
-        colorLabel !== note.color_label ||
-        isFavorited !== note.is_favorited;
-
-      if (hasChanges) {
-        updateNote(note.id, {
-          title: title || 'Untitled Note',
-          content,
-          color_label: colorLabel,
-          is_favorited: isFavorited
-        });
-      }
+    setIsSaving(true);
+    try {
+      await updateNote(note.id, {
+        title: title || 'Untitled Note',
+        content,
+        color_label: colorLabel,
+        is_favorited: isFavorited
+      }, true); // Show toast on manual save
       
-      // Clear editing flag after save
-      isEditingRef.current = false;
-    }, 500);
+      setHasUnsavedChanges(false);
+    } catch (error) {
+      console.error('Error saving note:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, [title, content, colorLabel, isFavorited, note, updateNote]);
-
-  // Clean up on unmount
-  useEffect(() => {
-    return () => {
-      isEditingRef.current = false;
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, []);
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.ctrlKey && e.key === 's') {
+      e.preventDefault();
+      handleSave();
+    }
+  };
 
   if (!note) {
     return (
       <div className="h-full flex items-center justify-center text-gray-500">
-        Loading note...
+        <div className="animate-pulse">Loading note...</div>
       </div>
     );
   }
@@ -110,10 +97,10 @@ const NoteEditor = ({ noteId, onClose }: NoteEditorProps) => {
   const selectedColorOption = colorOptions.find(option => option.value === colorLabel);
 
   return (
-    <div className={`h-full flex flex-col ${selectedColorOption?.class || 'bg-white'}`}>
+    <div className={`h-full flex flex-col ${selectedColorOption?.class || 'bg-white'}`} onKeyDown={handleKeyDown}>
       {/* Editor Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white/80 backdrop-blur-sm">
-        <div className="flex items-center space-x-4">
+      <div className="flex items-center justify-between p-3 lg:p-4 border-b border-gray-200 bg-white/80 backdrop-blur-sm">
+        <div className="flex items-center space-x-2 lg:space-x-4 flex-wrap">
           <Button
             variant="ghost"
             size="sm"
@@ -121,13 +108,13 @@ const NoteEditor = ({ noteId, onClose }: NoteEditorProps) => {
             className="gap-2"
           >
             <Heart className={`h-4 w-4 ${isFavorited ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
-            {isFavorited ? 'Favorited' : 'Add to Favorites'}
+            <span className="hidden sm:inline">{isFavorited ? 'Favorited' : 'Favorite'}</span>
           </Button>
 
           <div className="flex items-center space-x-2">
             <Palette className="h-4 w-4 text-gray-500" />
             <Select value={colorLabel} onValueChange={(value: Note['color_label']) => setColorLabel(value)}>
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-24 lg:w-32">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -135,13 +122,25 @@ const NoteEditor = ({ noteId, onClose }: NoteEditorProps) => {
                   <SelectItem key={option.value} value={option.value}>
                     <div className="flex items-center space-x-2">
                       <div className={`w-3 h-3 rounded-full ${option.class} border`} />
-                      <span>{option.label}</span>
+                      <span className="hidden lg:inline">{option.label}</span>
                     </div>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+
+          <Button
+            onClick={handleSave}
+            disabled={!hasUnsavedChanges || isSaving}
+            size="sm"
+            className="gap-2"
+          >
+            <Save className="h-4 w-4" />
+            <span className="hidden sm:inline">
+              {isSaving ? 'Saving...' : hasUnsavedChanges ? 'Save' : 'Saved'}
+            </span>
+          </Button>
         </div>
 
         <Button variant="ghost" size="sm" onClick={onClose}>
@@ -150,25 +149,28 @@ const NoteEditor = ({ noteId, onClose }: NoteEditorProps) => {
       </div>
 
       {/* Editor Content */}
-      <div className="flex-1 flex flex-col p-6 space-y-4">
+      <div className="flex-1 flex flex-col p-4 lg:p-6 space-y-4 overflow-hidden">
         <Input
           placeholder="Note title..."
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="text-xl font-semibold bg-transparent border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="text-lg lg:text-xl font-semibold bg-transparent border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
         />
 
         <Textarea
           placeholder="Start writing your note... You can use markdown formatting like **bold**, *italic*, and # headings"
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          className="flex-1 resize-none bg-transparent border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-base leading-relaxed"
+          className="flex-1 resize-none bg-transparent border-none p-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm lg:text-base leading-relaxed min-h-0"
         />
       </div>
 
-      {/* Markdown Help */}
-      <div className="p-4 bg-white/60 border-t border-gray-200 text-xs text-gray-500">
-        <p>💡 <strong>Markdown supported:</strong> Use **bold**, *italic*, # headings, - lists, and more</p>
+      {/* Footer */}
+      <div className="p-3 lg:p-4 bg-white/60 border-t border-gray-200 text-xs text-gray-500">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <p>💡 <strong>Markdown supported:</strong> Use **bold**, *italic*, # headings, - lists</p>
+          <p className="text-right">Ctrl+S to save</p>
+        </div>
       </div>
     </div>
   );

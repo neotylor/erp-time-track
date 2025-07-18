@@ -44,7 +44,7 @@ const NoteEditor = ({ noteId, onClose }: NoteEditorProps) => {
       setIsFavorited(foundNote.is_favorited);
       setHasUnsavedChanges(false);
     }
-  }, [noteId, notes]);
+  }, [noteId]); // Removed 'notes' dependency to prevent form reset during real-time updates
 
   // Track changes
   useEffect(() => {

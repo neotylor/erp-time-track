@@ -16,9 +16,14 @@ import MobileNavigation from "./components/MobileNavigation";
 import DesktopNavigation from "./components/DesktopNavigation";
 import MobileHeader from "./components/MobileHeader";
 import ProductivityHub from "./components/ProductivityHub";
+import AllToolsPage from "./pages/AllToolsPage";
 import TodoPage from "./pages/TodoPage";
 import NotesPage from "./pages/NotesPage";
 import EMIPage from "./pages/EMIPage";
+import PomodoroPage from "./pages/PomodoroPage";
+import HabitTrackerPage from "./pages/HabitTrackerPage";
+import BudgetPage from "./pages/BudgetPage";
+import VaultPage from "./pages/VaultPage";
 
 const queryClient = new QueryClient();
 
@@ -53,14 +58,17 @@ const App = () => {
                 <main className="flex-1">
                   <Routes>
                     <Route path="/" element={<ProductivityHub />} />
+                    <Route path="/tools" element={<AllToolsPage />} />
                     <Route path="/todo" element={<TodoPage />} />
                     <Route path="/notes" element={<NotesPage />} />
                     <Route path="/calculator" element={<Index />} />
                     <Route path="/about" element={<About />} />
                     <Route path="/settings" element={<Settings />} />
-                    {/* Placeholder routes for other tools */}
                     <Route path="/emi" element={<EMIPage />} />
-                    <Route path="/pomodoro" element={<div className="p-8 text-center"><h1 className="text-2xl">Pomodoro Timer - Coming Soon!</h1></div>} />
+                    <Route path="/pomodoro" element={<PomodoroPage />} />
+                    <Route path="/habits" element={<HabitTrackerPage />} />
+                    <Route path="/budget" element={<BudgetPage />} />
+                    <Route path="/vault" element={<VaultPage />} />
                     <Route path="/goals" element={<div className="p-8 text-center"><h1 className="text-2xl">Goal Tracker - Coming Soon!</h1></div>} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />

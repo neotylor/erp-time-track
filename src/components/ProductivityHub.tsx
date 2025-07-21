@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -84,8 +83,8 @@ const ProductivityHub: React.FC = () => {
             <Button asChild size="lg" className="text-lg px-8 py-3">
               <Link to="/todo">Start with To-Do</Link>
             </Button>
-            <Button variant="outline" size="lg" className="text-lg px-8 py-3">
-              Explore All Tools
+            <Button variant="outline" size="lg" className="text-lg px-8 py-3" asChild>
+              <Link to="/tools">Explore All Tools</Link>
             </Button>
           </div>
 

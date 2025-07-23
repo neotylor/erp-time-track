@@ -74,9 +74,16 @@ const TimeTracker = () => {
       }
 
       if (data) {
+        const parsedLaps = Array.isArray(data.laps) ? data.laps.map((lap: any) => ({
+          id: lap.id,
+          startTime: new Date(lap.startTime),
+          endTime: new Date(lap.endTime),
+          duration: lap.duration
+        })) : [];
+
         setTodaySession({
           date: today,
-          laps: data.laps || [],
+          laps: parsedLaps,
           totalMinutes: data.total_minutes || 0,
           breakCount: data.break_count || 0,
           breakDurationMinutes: data.break_duration_minutes || 0
@@ -114,13 +121,19 @@ const TimeTracker = () => {
       }
 
       if (data) {
-        setPreviousSessions(data.map(session => ({
+        const parsedSessions = data.map(session => ({
           date: new Date(session.date).toDateString(),
-          laps: session.laps || [],
+          laps: Array.isArray(session.laps) ? session.laps.map((lap: any) => ({
+            id: lap.id,
+            startTime: new Date(lap.startTime),
+            endTime: new Date(lap.endTime),
+            duration: lap.duration
+          })) : [],
           totalMinutes: session.total_minutes || 0,
           breakCount: session.break_count || 0,
           breakDurationMinutes: session.break_duration_minutes || 0
-        })));
+        }));
+        setPreviousSessions(parsedSessions);
       }
     } else {
       // Load from localStorage
@@ -148,13 +161,21 @@ const TimeTracker = () => {
 
   const saveSession = async (session: SessionData) => {
     if (user) {
+      // Convert laps to JSON-serializable format
+      const serializedLaps = session.laps.map(lap => ({
+        id: lap.id,
+        startTime: lap.startTime.toISOString(),
+        endTime: lap.endTime.toISOString(),
+        duration: lap.duration
+      }));
+
       // Save to database
       const { error } = await supabase
         .from('time_tracking_sessions')
         .upsert({
           user_id: user.id,
           date: new Date().toISOString().split('T')[0],
-          laps: session.laps,
+          laps: serializedLaps,
           total_minutes: session.totalMinutes,
           break_count: session.breakCount,
           break_duration_minutes: session.breakDurationMinutes,

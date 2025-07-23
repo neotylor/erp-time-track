@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -124,7 +123,7 @@ const TimeTracker = () => {
           totalMinutes: data.total_minutes || 0,
           breakCount: data.break_count || 0,
           breakDurationMinutes: data.break_duration_minutes || 0,
-          targetMinutes: data.target_minutes || 480
+          targetMinutes: (data as any).target_minutes || 480
         };
 
         setTodaySession(sessionData);
@@ -176,7 +175,7 @@ const TimeTracker = () => {
           totalMinutes: session.total_minutes || 0,
           breakCount: session.break_count || 0,
           breakDurationMinutes: session.break_duration_minutes || 0,
-          targetMinutes: session.target_minutes || 480
+          targetMinutes: (session as any).target_minutes || 480
         }));
         setPreviousSessions(parsedSessions);
       }

@@ -82,6 +82,7 @@ export type Database = {
           date: string
           id: string
           laps: Json
+          target_minutes: number
           total_minutes: number
           updated_at: string
           user_id: string
@@ -93,6 +94,7 @@ export type Database = {
           date?: string
           id?: string
           laps?: Json
+          target_minutes?: number
           total_minutes?: number
           updated_at?: string
           user_id: string
@@ -104,6 +106,7 @@ export type Database = {
           date?: string
           id?: string
           laps?: Json
+          target_minutes?: number
           total_minutes?: number
           updated_at?: string
           user_id?: string

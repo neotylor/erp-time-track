@@ -74,6 +74,42 @@ export type Database = {
         }
         Relationships: []
       }
+      time_tracking_sessions: {
+        Row: {
+          break_count: number
+          break_duration_minutes: number
+          created_at: string
+          date: string
+          id: string
+          laps: Json
+          total_minutes: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          break_count?: number
+          break_duration_minutes?: number
+          created_at?: string
+          date?: string
+          id?: string
+          laps?: Json
+          total_minutes?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          break_count?: number
+          break_duration_minutes?: number
+          created_at?: string
+          date?: string
+          id?: string
+          laps?: Json
+          total_minutes?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -24,6 +23,7 @@ import PomodoroPage from "./pages/PomodoroPage";
 import HabitTrackerPage from "./pages/HabitTrackerPage";
 import BudgetPage from "./pages/BudgetPage";
 import VaultPage from "./pages/VaultPage";
+import TimeTrackerPage from "./pages/TimeTrackerPage";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +69,7 @@ const App = () => {
                     <Route path="/habits" element={<HabitTrackerPage />} />
                     <Route path="/budget" element={<BudgetPage />} />
                     <Route path="/vault" element={<VaultPage />} />
+                    <Route path="/timetracker" element={<TimeTrackerPage />} />
                     <Route path="/goals" element={<div className="p-8 text-center"><h1 className="text-2xl">Goal Tracker - Coming Soon!</h1></div>} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />

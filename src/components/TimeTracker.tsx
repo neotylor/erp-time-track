@@ -7,7 +7,8 @@ import { Play, Square, Clock, Calendar, Coffee, Timer } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { minutesToTimeString, formatDifferenceTime } from '@/utils/timeUtils';
+import { minutesToTimeString, formatDifferenceTime, secondsToHHMMSS, formatTargetTime } from '@/utils/timeUtils';
+import TargetTimeSettings from './TargetTimeSettings';
 
 interface TimeLap {
   id: string;
@@ -22,6 +23,7 @@ interface SessionData {
   totalMinutes: number;
   breakCount: number;
   breakDurationMinutes: number;
+  targetMinutes: number;
 }
 
 const TimeTracker = () => {
@@ -29,12 +31,18 @@ const TimeTracker = () => {
   const [isTracking, setIsTracking] = useState(false);
   const [currentStart, setCurrentStart] = useState<Date | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [targetMinutes, setTargetMinutes] = useState(480); // 8 hours default
+  const [isTargetReached, setIsTargetReached] = useState(false);
+  const [isSnoozing, setIsSnoozing] = useState(false);
+  const [snoozeEndTime, setSnoozeEndTime] = useState<Date | null>(null);
+  const [snoozeTimeLeft, setSnoozeTimeLeft] = useState(0);
   const [todaySession, setTodaySession] = useState<SessionData>({
     date: new Date().toDateString(),
     laps: [],
     totalMinutes: 0,
     breakCount: 0,
-    breakDurationMinutes: 0
+    breakDurationMinutes: 0,
+    targetMinutes: 480
   });
   const [previousSessions, setPreviousSessions] = useState<SessionData[]>([]);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -56,6 +64,35 @@ const TimeTracker = () => {
       }
     };
   }, [user]);
+
+  // Check target and snooze status
+  useEffect(() => {
+    const totalMinutes = todaySession.totalMinutes + getCurrentDuration();
+    
+    if (totalMinutes >= targetMinutes && !isTargetReached) {
+      setIsTargetReached(true);
+      toast({
+        title: "🎉 Target Reached!",
+        description: "You've reached your target working time for today!"
+      });
+    }
+
+    // Handle snooze countdown
+    if (isSnoozing && snoozeEndTime) {
+      const timeLeft = snoozeEndTime.getTime() - currentTime.getTime();
+      if (timeLeft <= 0) {
+        setIsSnoozing(false);
+        setSnoozeEndTime(null);
+        setSnoozeTimeLeft(0);
+        toast({
+          title: "Snooze Ended",
+          description: "Time to get back to work! 💪"
+        });
+      } else {
+        setSnoozeTimeLeft(timeLeft);
+      }
+    }
+  }, [currentTime, todaySession.totalMinutes, targetMinutes, isTargetReached, isSnoozing, snoozeEndTime]);
 
   const loadTodaySession = async () => {
     const today = new Date().toDateString();
@@ -81,27 +118,34 @@ const TimeTracker = () => {
           duration: lap.duration
         })) : [];
 
-        setTodaySession({
+        const sessionData = {
           date: today,
           laps: parsedLaps,
           totalMinutes: data.total_minutes || 0,
           breakCount: data.break_count || 0,
-          breakDurationMinutes: data.break_duration_minutes || 0
-        });
+          breakDurationMinutes: data.break_duration_minutes || 0,
+          targetMinutes: data.target_minutes || 480
+        };
+
+        setTodaySession(sessionData);
+        setTargetMinutes(sessionData.targetMinutes);
       }
     } else {
       // Load from localStorage
       const stored = localStorage.getItem(`timeTracker_${today}`);
       if (stored) {
         const session = JSON.parse(stored);
-        setTodaySession({
+        const sessionData = {
           ...session,
+          targetMinutes: session.targetMinutes || 480,
           laps: session.laps.map((lap: any) => ({
             ...lap,
             startTime: new Date(lap.startTime),
             endTime: new Date(lap.endTime)
           }))
-        });
+        };
+        setTodaySession(sessionData);
+        setTargetMinutes(sessionData.targetMinutes);
       }
     }
   };
@@ -131,7 +175,8 @@ const TimeTracker = () => {
           })) : [],
           totalMinutes: session.total_minutes || 0,
           breakCount: session.break_count || 0,
-          breakDurationMinutes: session.break_duration_minutes || 0
+          breakDurationMinutes: session.break_duration_minutes || 0,
+          targetMinutes: session.target_minutes || 480
         }));
         setPreviousSessions(parsedSessions);
       }
@@ -147,6 +192,7 @@ const TimeTracker = () => {
           const session = JSON.parse(stored);
           sessions.push({
             ...session,
+            targetMinutes: session.targetMinutes || 480,
             laps: session.laps.map((lap: any) => ({
               ...lap,
               startTime: new Date(lap.startTime),
@@ -179,6 +225,7 @@ const TimeTracker = () => {
           total_minutes: session.totalMinutes,
           break_count: session.breakCount,
           break_duration_minutes: session.breakDurationMinutes,
+          target_minutes: session.targetMinutes,
           updated_at: new Date().toISOString()
         });
 
@@ -240,12 +287,20 @@ const TimeTracker = () => {
       laps: [...todaySession.laps, newLap],
       totalMinutes: todaySession.totalMinutes + duration,
       breakCount: todaySession.laps.length > 0 ? todaySession.breakCount + 1 : todaySession.breakCount,
-      breakDurationMinutes: todaySession.breakDurationMinutes + (breakDuration > 0 ? breakDuration : 0)
+      breakDurationMinutes: todaySession.breakDurationMinutes + (breakDuration > 0 ? breakDuration : 0),
+      targetMinutes: targetMinutes
     };
 
     setTodaySession(updatedSession);
     setIsTracking(false);
     setCurrentStart(null);
+    
+    // Reset snooze if active
+    if (isSnoozing) {
+      setIsSnoozing(false);
+      setSnoozeEndTime(null);
+      setSnoozeTimeLeft(0);
+    }
     
     saveSession(updatedSession);
     
@@ -260,14 +315,34 @@ const TimeTracker = () => {
     return Math.floor((currentTime.getTime() - currentStart.getTime()) / 60000);
   };
 
-  const getSessionStartTime = () => {
-    if (todaySession.laps.length === 0) return null;
-    return todaySession.laps[0].startTime;
+  const getCurrentDurationSeconds = () => {
+    if (!currentStart) return 0;
+    return Math.floor((currentTime.getTime() - currentStart.getTime()) / 1000);
   };
 
-  const getSessionEndTime = () => {
-    if (todaySession.laps.length === 0) return null;
-    return todaySession.laps[todaySession.laps.length - 1].endTime;
+  const handleTargetChange = (minutes: number) => {
+    setTargetMinutes(minutes);
+    const updatedSession = { ...todaySession, targetMinutes: minutes };
+    setTodaySession(updatedSession);
+    saveSession(updatedSession);
+    
+    // Reset target reached status if new target is higher
+    if (minutes > todaySession.totalMinutes + getCurrentDuration()) {
+      setIsTargetReached(false);
+    }
+  };
+
+  const handleSnooze = (minutes: number) => {
+    const endTime = new Date();
+    endTime.setMinutes(endTime.getMinutes() + minutes);
+    setSnoozeEndTime(endTime);
+    setIsSnoozing(true);
+    setSnoozeTimeLeft(minutes * 60 * 1000);
+    
+    toast({
+      title: "Snooze Set",
+      description: `Taking a ${minutes} minute break. Timer will remind you when it's time to get back to work!`
+    });
   };
 
   const formatDate = (date: Date) => {
@@ -276,6 +351,11 @@ const TimeTracker = () => {
       month: 'short', 
       year: 'numeric' 
     });
+  };
+
+  const getProgressPercentage = () => {
+    const totalMinutes = todaySession.totalMinutes + getCurrentDuration();
+    return Math.min((totalMinutes / targetMinutes) * 100, 100);
   };
 
   const SessionSummary = ({ session }: { session: SessionData }) => {
@@ -335,6 +415,38 @@ const TimeTracker = () => {
         <Clock className="h-8 w-8 text-primary" />
       </div>
 
+      {/* Target Time Settings */}
+      <TargetTimeSettings
+        targetMinutes={targetMinutes}
+        onTargetChange={handleTargetChange}
+        isTargetReached={isTargetReached}
+        onSnooze={handleSnooze}
+        isSnoozing={isSnoozing}
+        snoozeTimeLeft={snoozeTimeLeft}
+      />
+
+      {/* Progress Bar */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>Progress towards target</span>
+              <span>{Math.round(getProgressPercentage())}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-primary rounded-full h-2 transition-all duration-300"
+                style={{ width: `${getProgressPercentage()}%` }}
+              />
+            </div>
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>{minutesToTimeString(todaySession.totalMinutes + getCurrentDuration())}</span>
+              <span>{formatTargetTime(targetMinutes)}</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Current Session */}
       <Card>
         <CardHeader>
@@ -369,12 +481,17 @@ const TimeTracker = () => {
 
           {isTracking && (
             <div className="text-center">
-              <div className="text-2xl font-mono font-bold text-primary">
-                {minutesToTimeString(getCurrentDuration())}
+              <div className="text-3xl font-mono font-bold text-primary mb-2">
+                {secondsToHHMMSS(getCurrentDurationSeconds())}
               </div>
               <p className="text-sm text-muted-foreground">
                 Started at {currentStart?.toLocaleTimeString()}
               </p>
+              {isSnoozing && (
+                <div className="mt-2 text-sm text-green-600">
+                  ⏳ Snoozing: {Math.ceil(snoozeTimeLeft / 60000)} min left
+                </div>
+              )}
             </div>
           )}
 

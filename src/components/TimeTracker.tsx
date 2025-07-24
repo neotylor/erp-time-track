@@ -72,9 +72,9 @@ const TimeTracker = () => {
   };
 
   const restoreTimerState = () => {
-    console.log('Attempting to restore timer state...');
+    console.log('🔄 Attempting to restore timer state...');
     const stored = localStorage.getItem('timeTracker_currentTimer');
-    console.log('Stored timer state:', stored);
+    console.log('📦 Stored timer state raw:', stored);
     
     if (stored) {
       try {
@@ -82,10 +82,16 @@ const TimeTracker = () => {
         const startTime = new Date(timerState.startTime);
         const timeSinceStore = new Date().getTime() - new Date(timerState.timestamp).getTime();
         
-        console.log('Timer state data:', { timerState, startTime, timeSinceStore });
+        console.log('🔍 Timer state data:', { 
+          timerState, 
+          startTime: startTime.toISOString(), 
+          timeSinceStore: `${timeSinceStore}ms`,
+          isValid: timeSinceStore < 24 * 60 * 60 * 1000,
+          isTracking: timerState.isTracking
+        });
         
         if (timeSinceStore < 24 * 60 * 60 * 1000 && timerState.isTracking && startTime) {
-          console.log('Restoring timer state - conditions met');
+          console.log('✅ Restoring timer state - all conditions met');
           setCurrentStart(startTime);
           setIsTracking(true);
           setTargetMinutes(timerState.targetMinutes || 480);
@@ -98,19 +104,33 @@ const TimeTracker = () => {
             }
           }
           
+          const currentDuration = Math.floor((new Date().getTime() - startTime.getTime()) / 1000);
+          console.log(`⏰ Timer restored! Running for ${currentDuration} seconds since ${startTime.toLocaleTimeString()}`);
+          
           toast({
             title: "Timer Restored",
             description: `Resumed tracking from ${startTime.toLocaleTimeString()}`,
           });
-          console.log('Timer state restored successfully');
+          
+          showNotification({
+            title: "⏰ Timer Restored",
+            body: `Resumed tracking from ${startTime.toLocaleTimeString()}`,
+            tag: 'timer-restore'
+          });
         } else {
-          console.log('Timer state not restored - conditions not met');
+          console.log('❌ Timer state not restored - conditions not met:', {
+            tooOld: timeSinceStore >= 24 * 60 * 60 * 1000,
+            notTracking: !timerState.isTracking,
+            noStartTime: !startTime
+          });
           localStorage.removeItem('timeTracker_currentTimer');
         }
       } catch (error) {
-        console.error('Error restoring timer state:', error);
+        console.error('💥 Error restoring timer state:', error);
         localStorage.removeItem('timeTracker_currentTimer');
       }
+    } else {
+      console.log('📭 No stored timer state found');
     }
   };
 
@@ -155,9 +175,11 @@ const TimeTracker = () => {
 
   useEffect(() => {
     const initializeTracker = async () => {
+      // First restore timer state IMMEDIATELY
+      restoreTimerState();
+      
       await loadTodaySession();
       await loadPreviousSessions();
-      restoreTimerState();
       
       if (isSupported && permission === 'default') {
         await requestPermission();

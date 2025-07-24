@@ -7,18 +7,52 @@ import { Settings as SettingsIcon, Palette, Bell, Download, User, LogOut } from 
 import { Button } from '@/components/ui/button';
 import { useTheme } from 'next-themes';
 import { useAuth } from '@/hooks/useAuth';
+import { useNotifications } from '@/hooks/useNotifications';
+import { toast } from '@/hooks/use-toast';
 import AuthForm from '@/components/AuthForm';
 
 const Settings: React.FC = () => {
   const { theme, setTheme } = useTheme();
   const { user, signOut, isAuthenticated, loading } = useAuth();
-  const [notifications, setNotifications] = React.useState(true);
+  const { permission, isSupported, requestPermission } = useNotifications();
   const [autoSave, setAutoSave] = React.useState(true);
 
   const isDarkMode = theme === 'dark';
 
   const handleSignOut = async () => {
     await signOut();
+  };
+
+  const handleNotificationToggle = async (checked: boolean) => {
+    if (!isSupported) {
+      toast({
+        title: "Not Supported",
+        description: "Browser notifications are not supported in this browser.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (checked) {
+      const granted = await requestPermission();
+      if (granted) {
+        toast({
+          title: "Notifications Enabled",
+          description: "You'll now receive browser notifications for all tools."
+        });
+      } else {
+        toast({
+          title: "Permission Denied",
+          description: "Please enable notifications in your browser settings to receive alerts.",
+          variant: "destructive"
+        });
+      }
+    } else {
+      toast({
+        title: "Notifications Disabled",
+        description: "To completely disable notifications, please use your browser settings."
+      });
+    }
   };
 
   if (loading) {
@@ -101,13 +135,31 @@ const Settings: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="notifications">Enable notifications</Label>
-                <Switch
-                  id="notifications"
-                  checked={notifications}
-                  onCheckedChange={setNotifications}
-                />
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label htmlFor="browser-notifications">Browser notifications</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Get notified for timer events, target completions, and more
+                    </p>
+                  </div>
+                  <Switch
+                    id="browser-notifications"
+                    checked={permission === 'granted'}
+                    onCheckedChange={handleNotificationToggle}
+                    disabled={!isSupported}
+                  />
+                </div>
+                {!isSupported && (
+                  <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                    Browser notifications are not supported in this browser
+                  </p>
+                )}
+                {permission === 'denied' && (
+                  <p className="text-xs text-red-600 dark:text-red-400">
+                    Notifications are blocked. Please enable them in your browser settings.
+                  </p>
+                )}
               </div>
               <div className="flex items-center justify-between">
                 <Label htmlFor="auto-save">Auto-save data</Label>

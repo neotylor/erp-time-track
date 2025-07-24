@@ -33,24 +33,44 @@ export const useNotifications = () => {
   };
 
   const showNotification = (options: NotificationOptions) => {
-    if (!isSupported || permission !== 'granted') {
-      console.log('Notifications not supported or permission denied');
+    if (!isSupported) {
+      console.log('Notifications not supported in this browser');
+      return;
+    }
+
+    if (permission !== 'granted') {
+      console.log('Notification permission not granted');
       return;
     }
 
     try {
-      const notification = new Notification(options.title, {
-        body: options.body,
-        icon: options.icon || '/favicon.ico',
-        tag: options.tag,
-      });
+      // Check if browser is in focus
+      const isInFocus = document.hasFocus();
+      
+      // Only show notification if browser is not in focus or page is hidden
+      if (!isInFocus || document.visibilityState === 'hidden') {
+        const notification = new Notification(options.title, {
+          body: options.body,
+          icon: options.icon || '/favicon.ico',
+          tag: options.tag,
+          requireInteraction: false,
+        });
 
-      // Auto-close after 5 seconds
-      setTimeout(() => {
-        notification.close();
-      }, 5000);
+        // Auto-close after 5 seconds
+        setTimeout(() => {
+          notification.close();
+        }, 5000);
 
-      return notification;
+        // Handle click event
+        notification.onclick = () => {
+          window.focus();
+          notification.close();
+        };
+
+        return notification;
+      } else {
+        console.log('Browser is in focus, skipping notification');
+      }
     } catch (error) {
       console.error('Error showing notification:', error);
     }

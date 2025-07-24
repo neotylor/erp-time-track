@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Play, Square, Clock, Calendar, Coffee, Timer, Bell, BellOff } from 'lucide-react';
+import { Play, Square, Clock, Calendar, Coffee, Timer } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/hooks/useNotifications';
 import { supabase } from '@/integrations/supabase/client';
@@ -508,28 +508,6 @@ const TimeTracker = () => {
     });
   };
 
-  const handleNotificationToggle = async () => {
-    if (permission === 'granted') {
-      toast({
-        title: "Notifications Enabled",
-        description: "To disable notifications, please use your browser settings."
-      });
-    } else {
-      const granted = await requestPermission();
-      if (granted) {
-        toast({
-          title: "Notifications Enabled",
-          description: "You'll now receive notifications for timer events."
-        });
-      } else {
-        toast({
-          title: "Notifications Disabled",
-          description: "You can enable notifications in your browser settings.",
-          variant: "destructive"
-        });
-      }
-    }
-  };
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', { 
@@ -598,20 +576,7 @@ const TimeTracker = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Time Tracker</h1>
-        <div className="flex items-center gap-2">
-          {isSupported && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleNotificationToggle}
-              className="flex items-center gap-2"
-            >
-              {permission === 'granted' ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
-              {permission === 'granted' ? 'Notifications On' : 'Enable Notifications'}
-            </Button>
-          )}
-          <Clock className="h-8 w-8 text-primary" />
-        </div>
+        <Clock className="h-8 w-8 text-primary" />
       </div>
 
       <TargetTimeSettings

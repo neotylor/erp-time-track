@@ -15,15 +15,15 @@ interface TimeLap {
   id: string;
   startTime: Date;
   endTime: Date;
-  duration: number; // in minutes
+  duration: number; // in seconds for precise tracking
 }
 
 interface SessionData {
   date: string;
   laps: TimeLap[];
-  totalMinutes: number;
+  totalSeconds: number; // Track in seconds for precision
   breakCount: number;
-  breakDurationMinutes: number;
+  breakDurationSeconds: number; // Track breaks in seconds
   targetMinutes: number;
 }
 
@@ -41,9 +41,9 @@ const TimeTracker = () => {
   const [todaySession, setTodaySession] = useState<SessionData>({
     date: new Date().toDateString(),
     laps: [],
-    totalMinutes: 0,
+    totalSeconds: 0,
     breakCount: 0,
-    breakDurationMinutes: 0,
+    breakDurationSeconds: 0,
     targetMinutes: 480
   });
   const [previousSessions, setPreviousSessions] = useState<SessionData[]>([]);
@@ -127,9 +127,9 @@ const TimeTracker = () => {
                 endTime: lap.endTime.toISOString(),
                 duration: lap.duration
               })),
-              total_minutes: todaySession.totalMinutes,
+              total_minutes: Math.floor(todaySession.totalSeconds / 60),
               break_count: todaySession.breakCount,
-              break_duration_minutes: todaySession.breakDurationMinutes,
+              break_duration_minutes: Math.floor(todaySession.breakDurationSeconds / 60),
               target_minutes: targetMinutes,
               updated_at: new Date().toISOString()
             });
@@ -188,27 +188,43 @@ const TimeTracker = () => {
 
   useEffect(() => {
     if (isTracking) {
+      // Auto-save every 15 seconds
       autoSaveRef.current = setInterval(() => {
         autoSaveProgress();
-      }, 15000); // 15 seconds
-    } else if (autoSaveRef.current) {
-      clearInterval(autoSaveRef.current);
-      autoSaveRef.current = null;
+      }, 15000);
+      
+      // Update progress bar every second for smooth visual feedback
+      intervalRef.current = setInterval(() => {
+        setCurrentTime(new Date());
+      }, 1000);
+    } else {
+      if (autoSaveRef.current) {
+        clearInterval(autoSaveRef.current);
+        autoSaveRef.current = null;
+      }
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     }
 
     return () => {
       if (autoSaveRef.current) {
         clearInterval(autoSaveRef.current);
       }
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
     };
-  }, [isTracking, currentStart, todaySession, targetMinutes, user]);
+  }, [isTracking]); // Only depend on isTracking to prevent loops
 
   useEffect(() => {
     saveCurrentTimerState();
   }, [isTracking, currentStart, targetMinutes, isSnoozing, snoozeEndTime]);
 
   useEffect(() => {
-    const totalMinutes = todaySession.totalMinutes + getCurrentDuration();
+    const totalSeconds = todaySession.totalSeconds + getCurrentDurationSeconds();
+    const totalMinutes = Math.floor(totalSeconds / 60);
     
     if (totalMinutes >= targetMinutes && !isTargetReached) {
       setIsTargetReached(true);
@@ -246,7 +262,7 @@ const TimeTracker = () => {
         setSnoozeTimeLeft(timeLeft);
       }
     }
-  }, [currentTime, todaySession.totalMinutes, targetMinutes, isTargetReached, isSnoozing, snoozeEndTime, showNotification]);
+  }, [currentTime, todaySession.totalSeconds, targetMinutes, isTargetReached, isSnoozing, snoozeEndTime, showNotification]);
 
   const loadTodaySession = async () => {
     const today = new Date().toDateString();
@@ -274,9 +290,9 @@ const TimeTracker = () => {
         const sessionData = {
           date: today,
           laps: parsedLaps,
-          totalMinutes: data.total_minutes || 0,
+          totalSeconds: (data.total_minutes || 0) * 60, // Convert to seconds
           breakCount: data.break_count || 0,
-          breakDurationMinutes: data.break_duration_minutes || 0,
+          breakDurationSeconds: (data.break_duration_minutes || 0) * 60, // Convert to seconds
           targetMinutes: (data as any).target_minutes || 480
         };
 
@@ -289,6 +305,8 @@ const TimeTracker = () => {
         const session = JSON.parse(stored);
         const sessionData = {
           ...session,
+          totalSeconds: session.totalSeconds || (session.totalMinutes || 0) * 60,
+          breakDurationSeconds: session.breakDurationSeconds || (session.breakDurationMinutes || 0) * 60,
           targetMinutes: session.targetMinutes || 480,
           laps: session.laps.map((lap: any) => ({
             ...lap,
@@ -325,9 +343,9 @@ const TimeTracker = () => {
             endTime: new Date(lap.endTime),
             duration: lap.duration
           })) : [],
-          totalMinutes: session.total_minutes || 0,
+          totalSeconds: (session.total_minutes || 0) * 60,
           breakCount: session.break_count || 0,
-          breakDurationMinutes: session.break_duration_minutes || 0,
+          breakDurationSeconds: (session.break_duration_minutes || 0) * 60,
           targetMinutes: (session as any).target_minutes || 480
         }));
         setPreviousSessions(parsedSessions);
@@ -343,6 +361,8 @@ const TimeTracker = () => {
           const session = JSON.parse(stored);
           sessions.push({
             ...session,
+            totalSeconds: session.totalSeconds || (session.totalMinutes || 0) * 60,
+            breakDurationSeconds: session.breakDurationSeconds || (session.breakDurationMinutes || 0) * 60,
             targetMinutes: session.targetMinutes || 480,
             laps: session.laps.map((lap: any) => ({
               ...lap,
@@ -371,9 +391,9 @@ const TimeTracker = () => {
           user_id: user.id,
           date: new Date().toISOString().split('T')[0],
           laps: serializedLaps,
-          total_minutes: session.totalMinutes,
+          total_minutes: Math.floor(session.totalSeconds / 60),
           break_count: session.breakCount,
-          break_duration_minutes: session.breakDurationMinutes,
+          break_duration_minutes: Math.floor(session.breakDurationSeconds / 60),
           target_minutes: session.targetMinutes,
           updated_at: new Date().toISOString()
         });
@@ -420,7 +440,7 @@ const TimeTracker = () => {
     if (!currentStart) return;
 
     const endTime = new Date();
-    const duration = Math.floor((endTime.getTime() - currentStart.getTime()) / 60000); // in minutes
+    const duration = Math.floor((endTime.getTime() - currentStart.getTime()) / 1000); // in seconds
 
     const newLap: TimeLap = {
       id: Date.now().toString(),
@@ -432,15 +452,15 @@ const TimeTracker = () => {
     let breakDuration = 0;
     if (todaySession.laps.length > 0) {
       const lastLap = todaySession.laps[todaySession.laps.length - 1];
-      breakDuration = Math.floor((currentStart.getTime() - lastLap.endTime.getTime()) / 60000);
+      breakDuration = Math.floor((currentStart.getTime() - lastLap.endTime.getTime()) / 1000); // seconds
     }
 
     const updatedSession: SessionData = {
       ...todaySession,
       laps: [...todaySession.laps, newLap],
-      totalMinutes: todaySession.totalMinutes + duration,
+      totalSeconds: todaySession.totalSeconds + duration,
       breakCount: todaySession.laps.length > 0 ? todaySession.breakCount + 1 : todaySession.breakCount,
-      breakDurationMinutes: todaySession.breakDurationMinutes + (breakDuration > 0 ? breakDuration : 0),
+      breakDurationSeconds: todaySession.breakDurationSeconds + (breakDuration > 0 ? breakDuration : 0),
       targetMinutes: targetMinutes
     };
 
@@ -458,19 +478,24 @@ const TimeTracker = () => {
     
     showNotification({
       title: "✅ Lap Completed",
-      body: `Tracked ${minutesToTimeString(duration)} of work time`,
+      body: `Tracked ${secondsToHHMMSS(duration)} of work time`,
       tag: 'lap-complete'
     });
     
     toast({
       title: "Lap Completed",
-      description: `Tracked ${minutesToTimeString(duration)} of work time`
+      description: `Tracked ${secondsToHHMMSS(duration)} of work time`
     });
   };
 
   const getCurrentDuration = () => {
     if (!currentStart) return 0;
     return Math.floor((currentTime.getTime() - currentStart.getTime()) / 60000);
+  };
+
+  const getCurrentDurationForProgress = () => {
+    if (!currentStart) return 0;
+    return Math.floor((currentTime.getTime() - currentStart.getTime()) / 1000); // seconds for accurate progress
   };
 
   const getCurrentDurationSeconds = () => {
@@ -484,7 +509,7 @@ const TimeTracker = () => {
     setTodaySession(updatedSession);
     saveSession(updatedSession);
     
-    if (minutes > todaySession.totalMinutes + getCurrentDuration()) {
+    if (minutes > Math.floor((todaySession.totalSeconds + getCurrentDurationForProgress()) / 60)) {
       setIsTargetReached(false);
     }
   };
@@ -518,7 +543,8 @@ const TimeTracker = () => {
   };
 
   const getProgressPercentage = () => {
-    const totalMinutes = todaySession.totalMinutes + getCurrentDuration();
+    const totalSeconds = todaySession.totalSeconds + getCurrentDurationForProgress();
+    const totalMinutes = totalSeconds / 60;
     return Math.min((totalMinutes / targetMinutes) * 100, 100);
   };
 
@@ -542,7 +568,7 @@ const TimeTracker = () => {
         
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-green-500" />
-          <span>⏱️ Total Time Tracked: {minutesToTimeString(session.totalMinutes)}</span>
+          <span>⏱️ Total Time Tracked: {secondsToHHMMSS(session.totalSeconds)}</span>
         </div>
         
         {startTime && (
@@ -566,7 +592,7 @@ const TimeTracker = () => {
         
         <div className="flex items-center gap-2">
           <Coffee className="h-4 w-4 text-orange-400" />
-          <span>😴 Break Duration: {minutesToTimeString(session.breakDurationMinutes)}</span>
+          <span>😴 Break Duration: {secondsToHHMMSS(session.breakDurationSeconds)}</span>
         </div>
       </div>
     );
@@ -603,7 +629,7 @@ const TimeTracker = () => {
             
             <div className="flex justify-between text-xs text-muted-foreground">
               <span className="font-medium">
-                {minutesToTimeString(todaySession.totalMinutes + getCurrentDuration())}
+                {secondsToHHMMSS(todaySession.totalSeconds + getCurrentDurationForProgress())}
               </span>
               <span className="font-medium">
                 {formatTargetTime(targetMinutes)}
@@ -613,7 +639,7 @@ const TimeTracker = () => {
             {isTracking && (
               <div className="text-center">
                 <div className="text-sm text-muted-foreground">
-                  Current session: {minutesToTimeString(getCurrentDuration())}
+                  Current session: {secondsToHHMMSS(getCurrentDurationSeconds())}
                 </div>
               </div>
             )}
@@ -681,7 +707,7 @@ const TimeTracker = () => {
                         {lap.endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
-                    <span className="font-medium">{minutesToTimeString(lap.duration)}</span>
+                    <span className="font-medium">{secondsToHHMMSS(lap.duration)}</span>
                   </div>
                 ))}
               </div>

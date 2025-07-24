@@ -45,24 +45,167 @@ const TimeTracker = () => {
   });
   const [previousSessions, setPreviousSessions] = useState<SessionData[]>([]);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const autoSaveRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Persistent timer state management
+  const saveCurrentTimerState = () => {
+    if (isTracking && currentStart) {
+      const timerState = {
+        isTracking: true,
+        startTime: currentStart.toISOString(),
+        targetMinutes,
+        isSnoozing,
+        snoozeEndTime: snoozeEndTime?.toISOString() || null,
+        timestamp: new Date().toISOString()
+      };
+      localStorage.setItem('timeTracker_currentTimer', JSON.stringify(timerState));
+    } else {
+      localStorage.removeItem('timeTracker_currentTimer');
+    }
+  };
+
+  const restoreTimerState = () => {
+    const stored = localStorage.getItem('timeTracker_currentTimer');
+    if (stored) {
+      try {
+        const timerState = JSON.parse(stored);
+        const startTime = new Date(timerState.startTime);
+        const timeSinceStore = new Date().getTime() - new Date(timerState.timestamp).getTime();
+        
+        // Only restore if less than 24 hours old and seems valid
+        if (timeSinceStore < 24 * 60 * 60 * 1000 && timerState.isTracking && startTime) {
+          setCurrentStart(startTime);
+          setIsTracking(true);
+          setTargetMinutes(timerState.targetMinutes || 480);
+          
+          if (timerState.isSnoozing && timerState.snoozeEndTime) {
+            const snoozeEnd = new Date(timerState.snoozeEndTime);
+            if (snoozeEnd > new Date()) {
+              setIsSnoozing(true);
+              setSnoozeEndTime(snoozeEnd);
+            }
+          }
+          
+          toast({
+            title: "Timer Restored",
+            description: `Resumed tracking from ${startTime.toLocaleTimeString()}`,
+          });
+        } else {
+          localStorage.removeItem('timeTracker_currentTimer');
+        }
+      } catch (error) {
+        console.error('Error restoring timer state:', error);
+        localStorage.removeItem('timeTracker_currentTimer');
+      }
+    }
+  };
+
+  const autoSaveProgress = async () => {
+    if (isTracking && currentStart) {
+      const currentDuration = getCurrentDuration();
+      const progressData = {
+        startTime: currentStart.toISOString(),
+        currentDuration,
+        timestamp: new Date().toISOString(),
+        targetMinutes,
+        sessionData: todaySession
+      };
+      
+      // Save to localStorage
+      localStorage.setItem('timeTracker_autoSave', JSON.stringify(progressData));
+      
+      // Backup to database if user is authenticated
+      if (user) {
+        try {
+          await supabase
+            .from('time_tracking_sessions')
+            .upsert({
+              user_id: user.id,
+              date: new Date().toISOString().split('T')[0],
+              laps: todaySession.laps.map(lap => ({
+                id: lap.id,
+                startTime: lap.startTime.toISOString(),
+                endTime: lap.endTime.toISOString(),
+                duration: lap.duration
+              })),
+              total_minutes: todaySession.totalMinutes,
+              break_count: todaySession.breakCount,
+              break_duration_minutes: todaySession.breakDurationMinutes,
+              target_minutes: targetMinutes,
+              updated_at: new Date().toISOString()
+            });
+        } catch (error) {
+          console.error('Auto-save to database failed:', error);
+        }
+      }
+    }
+  };
 
   // Load data on component mount
   useEffect(() => {
-    loadTodaySession();
-    loadPreviousSessions();
+    const initializeTracker = async () => {
+      await loadTodaySession();
+      await loadPreviousSessions();
+      restoreTimerState();
+    };
+    
+    initializeTracker();
     
     // Update current time every second
     const timeInterval = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
 
+    // Handle page visibility changes and beforeunload
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        saveCurrentTimerState();
+      }
+    };
+
+    const handleBeforeUnload = () => {
+      saveCurrentTimerState();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
     return () => {
       clearInterval(timeInterval);
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
+      if (autoSaveRef.current) {
+        clearInterval(autoSaveRef.current);
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      saveCurrentTimerState();
     };
   }, [user]);
+
+  // Auto-save every 30 seconds
+  useEffect(() => {
+    if (isTracking) {
+      autoSaveRef.current = setInterval(() => {
+        autoSaveProgress();
+      }, 30000); // 30 seconds
+    } else if (autoSaveRef.current) {
+      clearInterval(autoSaveRef.current);
+      autoSaveRef.current = null;
+    }
+
+    return () => {
+      if (autoSaveRef.current) {
+        clearInterval(autoSaveRef.current);
+      }
+    };
+  }, [isTracking, currentStart, todaySession, targetMinutes, user]);
+
+  // Save timer state whenever tracking state changes
+  useEffect(() => {
+    saveCurrentTimerState();
+  }, [isTracking, currentStart, targetMinutes, isSnoozing, snoozeEndTime]);
 
   // Check target and snooze status
   useEffect(() => {

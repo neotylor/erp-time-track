@@ -67,14 +67,20 @@ const TimeTracker = () => {
   };
 
   const restoreTimerState = () => {
+    console.log('Attempting to restore timer state...');
     const stored = localStorage.getItem('timeTracker_currentTimer');
+    console.log('Stored timer state:', stored);
+    
     if (stored) {
       try {
         const timerState = JSON.parse(stored);
         const startTime = new Date(timerState.startTime);
         const timeSinceStore = new Date().getTime() - new Date(timerState.timestamp).getTime();
         
+        console.log('Timer state data:', { timerState, startTime, timeSinceStore });
+        
         if (timeSinceStore < 24 * 60 * 60 * 1000 && timerState.isTracking && startTime) {
+          console.log('Restoring timer state - conditions met');
           setCurrentStart(startTime);
           setIsTracking(true);
           setTargetMinutes(timerState.targetMinutes || 480);
@@ -91,7 +97,9 @@ const TimeTracker = () => {
             title: "Timer Restored",
             description: `Resumed tracking from ${startTime.toLocaleTimeString()}`,
           });
+          console.log('Timer state restored successfully');
         } else {
+          console.log('Timer state not restored - conditions not met');
           localStorage.removeItem('timeTracker_currentTimer');
         }
       } catch (error) {

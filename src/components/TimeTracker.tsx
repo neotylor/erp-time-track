@@ -2,8 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Play, Square, Clock, Calendar, Coffee, Timer } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Play, Square, Clock, Calendar, Coffee, Timer, Bell, BellOff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useNotifications } from '@/hooks/useNotifications';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { minutesToTimeString, formatDifferenceTime, secondsToHHMMSS, formatTargetTime } from '@/utils/timeUtils';
@@ -27,6 +29,7 @@ interface SessionData {
 
 const TimeTracker = () => {
   const { user } = useAuth();
+  const { permission, isSupported, requestPermission, showNotification } = useNotifications();
   const [isTracking, setIsTracking] = useState(false);
   const [currentStart, setCurrentStart] = useState<Date | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -47,7 +50,6 @@ const TimeTracker = () => {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const autoSaveRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Persistent timer state management
   const saveCurrentTimerState = () => {
     if (isTracking && currentStart) {
       const timerState = {
@@ -72,7 +74,6 @@ const TimeTracker = () => {
         const startTime = new Date(timerState.startTime);
         const timeSinceStore = new Date().getTime() - new Date(timerState.timestamp).getTime();
         
-        // Only restore if less than 24 hours old and seems valid
         if (timeSinceStore < 24 * 60 * 60 * 1000 && timerState.isTracking && startTime) {
           setCurrentStart(startTime);
           setIsTracking(true);
@@ -111,10 +112,8 @@ const TimeTracker = () => {
         sessionData: todaySession
       };
       
-      // Save to localStorage
       localStorage.setItem('timeTracker_autoSave', JSON.stringify(progressData));
       
-      // Backup to database if user is authenticated
       if (user) {
         try {
           await supabase
@@ -141,22 +140,23 @@ const TimeTracker = () => {
     }
   };
 
-  // Load data on component mount
   useEffect(() => {
     const initializeTracker = async () => {
       await loadTodaySession();
       await loadPreviousSessions();
       restoreTimerState();
+      
+      if (isSupported && permission === 'default') {
+        await requestPermission();
+      }
     };
     
     initializeTracker();
     
-    // Update current time every second
     const timeInterval = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
 
-    // Handle page visibility changes and beforeunload
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
         saveCurrentTimerState();
@@ -182,14 +182,13 @@ const TimeTracker = () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       saveCurrentTimerState();
     };
-  }, [user]);
+  }, [user, isSupported, permission, requestPermission]);
 
-  // Auto-save every 30 seconds
   useEffect(() => {
     if (isTracking) {
       autoSaveRef.current = setInterval(() => {
         autoSaveProgress();
-      }, 30000); // 30 seconds
+      }, 15000); // 15 seconds
     } else if (autoSaveRef.current) {
       clearInterval(autoSaveRef.current);
       autoSaveRef.current = null;
@@ -202,30 +201,41 @@ const TimeTracker = () => {
     };
   }, [isTracking, currentStart, todaySession, targetMinutes, user]);
 
-  // Save timer state whenever tracking state changes
   useEffect(() => {
     saveCurrentTimerState();
   }, [isTracking, currentStart, targetMinutes, isSnoozing, snoozeEndTime]);
 
-  // Check target and snooze status
   useEffect(() => {
     const totalMinutes = todaySession.totalMinutes + getCurrentDuration();
     
     if (totalMinutes >= targetMinutes && !isTargetReached) {
       setIsTargetReached(true);
+      
+      showNotification({
+        title: "🎯 Target Reached!",
+        body: `You've completed your ${formatTargetTime(targetMinutes)} goal!`,
+        tag: 'target-reached'
+      });
+      
       toast({
         title: "🎉 Target Reached!",
         description: "You've reached your target working time for today!"
       });
     }
 
-    // Handle snooze countdown
     if (isSnoozing && snoozeEndTime) {
       const timeLeft = snoozeEndTime.getTime() - currentTime.getTime();
       if (timeLeft <= 0) {
         setIsSnoozing(false);
         setSnoozeEndTime(null);
         setSnoozeTimeLeft(0);
+        
+        showNotification({
+          title: "🔔 Break Over!",
+          body: "Time to get back to work! Resume working?",
+          tag: 'snooze-end'
+        });
+        
         toast({
           title: "Snooze Ended",
           description: "Time to get back to work! 💪"
@@ -234,13 +244,12 @@ const TimeTracker = () => {
         setSnoozeTimeLeft(timeLeft);
       }
     }
-  }, [currentTime, todaySession.totalMinutes, targetMinutes, isTargetReached, isSnoozing, snoozeEndTime]);
+  }, [currentTime, todaySession.totalMinutes, targetMinutes, isTargetReached, isSnoozing, snoozeEndTime, showNotification]);
 
   const loadTodaySession = async () => {
     const today = new Date().toDateString();
     
     if (user) {
-      // Load from database
       const { data, error } = await supabase
         .from('time_tracking_sessions')
         .select('*')
@@ -273,7 +282,6 @@ const TimeTracker = () => {
         setTargetMinutes(sessionData.targetMinutes);
       }
     } else {
-      // Load from localStorage
       const stored = localStorage.getItem(`timeTracker_${today}`);
       if (stored) {
         const session = JSON.parse(stored);
@@ -323,7 +331,6 @@ const TimeTracker = () => {
         setPreviousSessions(parsedSessions);
       }
     } else {
-      // Load from localStorage
       const sessions: SessionData[] = [];
       for (let i = 1; i <= 7; i++) {
         const date = new Date();
@@ -349,7 +356,6 @@ const TimeTracker = () => {
 
   const saveSession = async (session: SessionData) => {
     if (user) {
-      // Convert laps to JSON-serializable format
       const serializedLaps = session.laps.map(lap => ({
         id: lap.id,
         startTime: lap.startTime.toISOString(),
@@ -357,7 +363,6 @@ const TimeTracker = () => {
         duration: lap.duration
       }));
 
-      // Save to database
       const { error } = await supabase
         .from('time_tracking_sessions')
         .upsert({
@@ -381,7 +386,6 @@ const TimeTracker = () => {
         return;
       }
     } else {
-      // Save to localStorage
       localStorage.setItem(`timeTracker_${session.date}`, JSON.stringify({
         ...session,
         laps: session.laps.map(lap => ({
@@ -397,6 +401,12 @@ const TimeTracker = () => {
     const startTime = new Date();
     setCurrentStart(startTime);
     setIsTracking(true);
+    
+    showNotification({
+      title: "⏰ Timer Started",
+      body: `Started tracking at ${startTime.toLocaleTimeString()}`,
+      tag: 'timer-start'
+    });
     
     toast({
       title: "Timer Started",
@@ -417,7 +427,6 @@ const TimeTracker = () => {
       duration
     };
 
-    // Calculate break time
     let breakDuration = 0;
     if (todaySession.laps.length > 0) {
       const lastLap = todaySession.laps[todaySession.laps.length - 1];
@@ -437,7 +446,6 @@ const TimeTracker = () => {
     setIsTracking(false);
     setCurrentStart(null);
     
-    // Reset snooze if active
     if (isSnoozing) {
       setIsSnoozing(false);
       setSnoozeEndTime(null);
@@ -445,6 +453,12 @@ const TimeTracker = () => {
     }
     
     saveSession(updatedSession);
+    
+    showNotification({
+      title: "✅ Lap Completed",
+      body: `Tracked ${minutesToTimeString(duration)} of work time`,
+      tag: 'lap-complete'
+    });
     
     toast({
       title: "Lap Completed",
@@ -468,7 +482,6 @@ const TimeTracker = () => {
     setTodaySession(updatedSession);
     saveSession(updatedSession);
     
-    // Reset target reached status if new target is higher
     if (minutes > todaySession.totalMinutes + getCurrentDuration()) {
       setIsTargetReached(false);
     }
@@ -481,10 +494,39 @@ const TimeTracker = () => {
     setIsSnoozing(true);
     setSnoozeTimeLeft(minutes * 60 * 1000);
     
+    showNotification({
+      title: "😴 Snooze Set",
+      body: `Taking a ${minutes} minute break. We'll remind you when it's time to get back to work!`,
+      tag: 'snooze-start'
+    });
+    
     toast({
       title: "Snooze Set",
       description: `Taking a ${minutes} minute break. Timer will remind you when it's time to get back to work!`
     });
+  };
+
+  const handleNotificationToggle = async () => {
+    if (permission === 'granted') {
+      toast({
+        title: "Notifications Enabled",
+        description: "To disable notifications, please use your browser settings."
+      });
+    } else {
+      const granted = await requestPermission();
+      if (granted) {
+        toast({
+          title: "Notifications Enabled",
+          description: "You'll now receive notifications for timer events."
+        });
+      } else {
+        toast({
+          title: "Notifications Disabled",
+          description: "You can enable notifications in your browser settings.",
+          variant: "destructive"
+        });
+      }
+    }
   };
 
   const formatDate = (date: Date) => {
@@ -554,10 +596,22 @@ const TimeTracker = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Time Tracker</h1>
-        <Clock className="h-8 w-8 text-primary" />
+        <div className="flex items-center gap-2">
+          {isSupported && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleNotificationToggle}
+              className="flex items-center gap-2"
+            >
+              {permission === 'granted' ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+              {permission === 'granted' ? 'Notifications On' : 'Enable Notifications'}
+            </Button>
+          )}
+          <Clock className="h-8 w-8 text-primary" />
+        </div>
       </div>
 
-      {/* Target Time Settings */}
       <TargetTimeSettings
         targetMinutes={targetMinutes}
         onTargetChange={handleTargetChange}
@@ -567,29 +621,39 @@ const TimeTracker = () => {
         snoozeTimeLeft={snoozeTimeLeft}
       />
 
-      {/* Progress Bar */}
       <Card>
         <CardContent className="pt-6">
-          <div className="space-y-2">
+          <div className="space-y-4">
             <div className="flex justify-between text-sm">
               <span>Progress towards target</span>
-              <span>{Math.round(getProgressPercentage())}%</span>
+              <span className="font-medium">{Math.round(getProgressPercentage())}%</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-primary rounded-full h-2 transition-all duration-300"
-                style={{ width: `${getProgressPercentage()}%` }}
-              />
-            </div>
+            
+            <Progress 
+              value={getProgressPercentage()} 
+              className="h-3 transition-all duration-300"
+            />
+            
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{minutesToTimeString(todaySession.totalMinutes + getCurrentDuration())}</span>
-              <span>{formatTargetTime(targetMinutes)}</span>
+              <span className="font-medium">
+                {minutesToTimeString(todaySession.totalMinutes + getCurrentDuration())}
+              </span>
+              <span className="font-medium">
+                {formatTargetTime(targetMinutes)}
+              </span>
             </div>
+            
+            {isTracking && (
+              <div className="text-center">
+                <div className="text-sm text-muted-foreground">
+                  Current session: {minutesToTimeString(getCurrentDuration())}
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Current Session */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -659,7 +723,6 @@ const TimeTracker = () => {
         </CardContent>
       </Card>
 
-      {/* Today's Summary */}
       {todaySession.laps.length > 0 && (
         <Card>
           <CardHeader>
@@ -671,7 +734,6 @@ const TimeTracker = () => {
         </Card>
       )}
 
-      {/* Previous Sessions */}
       {previousSessions.length > 0 && (
         <Card>
           <CardHeader>

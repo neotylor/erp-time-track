@@ -152,7 +152,9 @@ const TimeTracker = () => {
     };
     
     initializeTracker();
-    
+  }, [user]); // Only depend on user to prevent infinite loops
+
+  useEffect(() => {
     const timeInterval = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
@@ -182,7 +184,7 @@ const TimeTracker = () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       saveCurrentTimerState();
     };
-  }, [user, isSupported, permission, requestPermission]);
+  }, []); // Run once on mount
 
   useEffect(() => {
     if (isTracking) {

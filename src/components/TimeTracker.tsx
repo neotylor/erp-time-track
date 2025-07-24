@@ -51,6 +51,8 @@ const TimeTracker = () => {
   const autoSaveRef = useRef<NodeJS.Timeout | null>(null);
 
   const saveCurrentTimerState = () => {
+    console.log('saveCurrentTimerState called:', { isTracking, currentStart, targetMinutes });
+    
     if (isTracking && currentStart) {
       const timerState = {
         isTracking: true,
@@ -60,8 +62,11 @@ const TimeTracker = () => {
         snoozeEndTime: snoozeEndTime?.toISOString() || null,
         timestamp: new Date().toISOString()
       };
+      console.log('Saving timer state:', timerState);
       localStorage.setItem('timeTracker_currentTimer', JSON.stringify(timerState));
+      console.log('Timer state saved to localStorage');
     } else {
+      console.log('Clearing timer state from localStorage');
       localStorage.removeItem('timeTracker_currentTimer');
     }
   };
@@ -428,9 +433,22 @@ const TimeTracker = () => {
   };
 
   const startTracking = () => {
+    console.log('startTracking called');
     const startTime = new Date();
     setCurrentStart(startTime);
     setIsTracking(true);
+    
+    // Immediately save to localStorage (don't wait for useEffect)
+    const timerState = {
+      isTracking: true,
+      startTime: startTime.toISOString(),
+      targetMinutes,
+      isSnoozing,
+      snoozeEndTime: snoozeEndTime?.toISOString() || null,
+      timestamp: new Date().toISOString()
+    };
+    console.log('Immediately saving timer state on start:', timerState);
+    localStorage.setItem('timeTracker_currentTimer', JSON.stringify(timerState));
     
     showNotification({
       title: "⏰ Timer Started",

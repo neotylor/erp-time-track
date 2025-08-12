@@ -1,22 +1,23 @@
 import React from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import AuthForm from '@/components/AuthForm';
 import EMICalculator from '@/components/EMICalculator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const EMIPage = () => {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  const { user } = useAuth();
 
   return (
     <div className="min-h-screen bg-background">
-      {user ? <EMICalculator /> : <AuthForm />}
+      {!user && (
+        <div className="container mx-auto px-4 pt-4">
+          <Alert>
+            <AlertDescription>
+              You’re using the EMI Calculator as a guest. Sign in from the header any time to sync your data across devices.
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+      <EMICalculator />
     </div>
   );
 };

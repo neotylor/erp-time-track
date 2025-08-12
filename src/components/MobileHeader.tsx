@@ -13,19 +13,21 @@ const MobileHeader: React.FC = () => {
   const getPageTitle = () => {
     switch (location.pathname) {
       case '/':
-        return 'TaskFlow Pro';
+        return 'Tools Hub Pro';
       case '/todo':
         return 'Smart To-Do';
       case '/notes':
         return 'Notes';
       case '/calculator':
         return 'Calculator';
+      case '/tools':
+        return 'Tools';
       case '/about':
         return 'About';
       case '/settings':
         return 'Settings';
       default:
-        return 'TaskFlow Pro';
+        return 'Tools Hub Pro';
     }
   };
 

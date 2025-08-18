@@ -8,29 +8,29 @@ import { Calculator, Clock, TrendingUp, Smartphone, Upload, BarChart3 } from 'lu
 const LandingPage: React.FC = () => {
   const features = [
     {
-      icon: Upload,
-      title: 'Easy Data Import',
-      description: 'Upload your attendance data via CSV files or paste directly into the app'
+      icon: Calculator,
+      title: 'Powerful Tools',
+      description: 'Access a comprehensive suite of calculators and productivity tools'
     },
     {
-      icon: Calculator,
-      title: 'Smart Calculations',
-      description: 'Automatically calculate your progress against expected daily hours'
+      icon: Clock,
+      title: 'Time Management',
+      description: 'Track time, manage habits, and boost your productivity'
     },
     {
       icon: BarChart3,
-      title: 'Visual Analytics',
-      description: 'View your attendance in both table and calendar formats'
+      title: 'Data Analytics',
+      description: 'Visualize your progress with charts and detailed insights'
     },
     {
       icon: TrendingUp,
       title: 'Progress Tracking',
-      description: 'See if you\'re ahead, behind, or on track with your working hours'
+      description: 'Monitor your goals and see your improvement over time'
     },
     {
-      icon: Clock,
-      title: 'Time Format Support',
-      description: 'Works with hours and minutes format for precise tracking'
+      icon: Upload,
+      title: 'Easy Import',
+      description: 'Import data seamlessly with CSV support and direct input'
     },
     {
       icon: Smartphone,
@@ -51,7 +51,7 @@ const LandingPage: React.FC = () => {
               <span className="text-primary"> Pro</span>
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Your all-in-one productivity suite with professional tools for everyday tasks
+              Your all-in-one productivity companion. Streamline your workflow and boost efficiency with smart tools designed for modern professionals.
             </p>
           </div>
           
@@ -87,10 +87,10 @@ const LandingPage: React.FC = () => {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Everything You Need for <span className="text-primary">Time Tracking</span>
+              Productivity Tools at Your <span className="text-primary">Fingertips</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Our comprehensive timesheet calculator provides all the tools you need to manage and analyze your working hours effectively.
+              Choose from our curated collection of productivity tools designed to help you work smarter, not harder.
             </p>
           </div>
 
@@ -116,13 +116,13 @@ const LandingPage: React.FC = () => {
       <section className="px-4 py-16 bg-primary/5">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Ready to Start Tracking?
+            Ready to Boost Your Productivity?
           </h2>
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join thousands of professionals who trust our timesheet calculator for accurate attendance tracking and progress monitoring.
+            Join thousands of professionals who have transformed their workflow with Tools Hub Pro. Start your journey to peak productivity today.
           </p>
           <Button asChild size="lg" className="text-lg px-8 py-3">
-            <Link to="/calculator">Start Calculating Now</Link>
+            <Link to="/tools">Start Your First Tool</Link>
           </Button>
         </div>
       </section>
@@ -130,7 +130,7 @@ const LandingPage: React.FC = () => {
       {/* Footer */}
       <footer className="px-4 py-8 border-t bg-background">
         <div className="max-w-6xl mx-auto text-center text-muted-foreground">
-          <p>&copy; 2024 ERP Timesheet Calculator. Built with ❤️ for productivity.</p>
+          <p>&copy; 2024 Tools Hub Pro. Built with ❤️ for productivity.</p>
         </div>
       </footer>
     </div>

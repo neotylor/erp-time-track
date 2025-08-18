@@ -47,20 +47,20 @@ const LandingPage: React.FC = () => {
           <div className="mb-8">
             <Calculator className="h-16 w-16 mx-auto mb-6 text-primary" />
             <h1 className="text-4xl md:text-6xl font-bold mb-4">
-              ERP Timesheet
-              <span className="text-primary"> Calculator</span>
+              Tools Hub
+              <span className="text-primary"> Pro</span>
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Track your attendance data and monitor your progress against expected working hours with ease
+              Your all-in-one productivity suite with professional tools for everyday tasks
             </p>
           </div>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
             <Button asChild size="lg" className="text-lg px-8 py-3">
-              <Link to="/calculator">Get Started</Link>
+              <Link to="/tools">Explore Tools</Link>
             </Button>
-            <Button variant="outline" size="lg" className="text-lg px-8 py-3">
-              Learn More
+            <Button asChild variant="outline" size="lg" className="text-lg px-8 py-3">
+              <Link to="/about">Learn More</Link>
             </Button>
           </div>
 

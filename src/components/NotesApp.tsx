@@ -40,9 +40,9 @@ const NotesApp = () => {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="h-screen flex flex-col bg-background">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 px-4 py-3 lg:px-6 lg:py-4">
+      <header className="bg-background/80 backdrop-blur-sm border-b border-border px-4 py-3 lg:px-6 lg:py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2 lg:space-x-4">
             <Button
@@ -54,7 +54,7 @@ const NotesApp = () => {
               {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
             </Button>
             
-            <h1 className="text-xl lg:text-2xl font-bold text-gray-900">Notes</h1>
+            <h1 className="text-xl lg:text-2xl font-bold text-foreground">Notes</h1>
             
             <Button onClick={handleCreateNote} size="sm" className="gap-2">
               <Plus className="h-4 w-4" />
@@ -72,16 +72,16 @@ const NotesApp = () => {
                       <User className="h-4 w-4" />
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-sm text-gray-600 hidden lg:inline">
-                    {user?.user_metadata?.full_name || user?.email}
-                  </span>
+                   <span className="text-sm text-muted-foreground hidden lg:inline">
+                     {user?.user_metadata?.full_name || user?.email}
+                   </span>
                 </div>
                 <Button variant="ghost" size="sm" onClick={handleSignOut}>
                   <LogOut className="h-4 w-4" />
                 </Button>
               </>
             ) : (
-              <div className="text-xs lg:text-sm text-gray-600 max-w-48 lg:max-w-none">
+              <div className="text-xs lg:text-sm text-muted-foreground max-w-48 lg:max-w-none">
                 Notes saved locally - Sign in to sync
               </div>
             )}
@@ -104,14 +104,14 @@ const NotesApp = () => {
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           fixed lg:relative z-50 lg:z-auto
           w-80 lg:w-80 h-full
-          bg-white/90 lg:bg-white/60 backdrop-blur-sm 
-          border-r border-gray-200 
+          bg-background/90 lg:bg-background/60 backdrop-blur-sm 
+          border-r border-border 
           flex flex-col
           transition-transform duration-300 ease-in-out
           ${!sidebarOpen && 'lg:w-16'}
         `}>
           {/* Sidebar Header */}
-          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+          <div className="p-4 border-b border-border flex items-center justify-between">
             {sidebarOpen && <NotesSearch />}
             <Button
               variant="ghost"
@@ -134,14 +134,14 @@ const NotesApp = () => {
         </div>
 
         {/* Editor */}
-        <div className="flex-1 bg-white overflow-hidden">
+        <div className="flex-1 bg-background overflow-hidden">
           {selectedNoteId ? (
             <NoteEditor 
               noteId={selectedNoteId}
               onClose={() => setSelectedNoteId(null)}
             />
           ) : (
-            <div className="h-full flex items-center justify-center text-gray-500 p-4">
+            <div className="h-full flex items-center justify-center text-muted-foreground p-4">
               <div className="text-center">
                 <div className="text-4xl lg:text-6xl mb-4">📝</div>
                 <h2 className="text-lg lg:text-xl font-medium mb-2">Select a note to start writing</h2>

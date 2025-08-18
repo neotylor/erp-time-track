@@ -24,6 +24,8 @@ import HabitTrackerPage from "./pages/HabitTrackerPage";
 import BudgetPage from "./pages/BudgetPage";
 import VaultPage from "./pages/VaultPage";
 import TimeTrackerPage from "./pages/TimeTrackerPage";
+import PasswordGeneratorPage from "./pages/PasswordGeneratorPage";
+import CalculatorPage from "./pages/CalculatorPage";
 
 const queryClient = new QueryClient();
 
@@ -61,7 +63,8 @@ const App = () => {
                     <Route path="/tools" element={<AllToolsPage />} />
                     <Route path="/todo" element={<TodoPage />} />
                     <Route path="/notes" element={<NotesPage />} />
-                    <Route path="/calculator" element={<Index />} />
+                    <Route path="/calculator" element={<CalculatorPage />} />
+                    <Route path="/password" element={<PasswordGeneratorPage />} />
                     <Route path="/about" element={<About />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/emi" element={<EMIPage />} />

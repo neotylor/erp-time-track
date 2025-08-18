@@ -11,15 +11,16 @@ import {
   Target, 
   Wallet, 
   Shield,
-  Clock
+  Clock,
+  Key
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const AllToolsPage = () => {
   const tools = [
     {
-      title: 'Calculator',
-      description: 'Advanced calculator with scientific functions',
+      title: 'Timesheet Calculator',
+      description: 'Calculate attendance and working hours',
       icon: Calculator,
       path: '/calculator',
       color: 'bg-blue-500'
@@ -79,6 +80,13 @@ const AllToolsPage = () => {
       icon: Clock,
       path: '/timetracker',
       color: 'bg-orange-500'
+    },
+    {
+      title: 'Password Generator',
+      description: 'Generate secure passwords with customization',
+      icon: Key,
+      path: '/password',
+      color: 'bg-pink-500'
     }
   ];
 

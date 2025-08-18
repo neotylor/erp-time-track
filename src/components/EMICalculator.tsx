@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
 import { RotateCcw } from 'lucide-react';
 import { calculateEMI } from '@/utils/emiCalculations';
 import EMIResults from '@/components/EMIResults';
@@ -66,7 +67,7 @@ const EMICalculator = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label htmlFor="loanAmount">Loan Amount (₹)</Label>
                 <Input
                   id="loanAmount"
@@ -76,12 +77,20 @@ const EMICalculator = () => {
                   placeholder="Enter loan amount"
                   className="text-lg"
                 />
+                <Slider
+                  value={[parseFloat(loanAmount) || 100000]}
+                  onValueChange={([value]) => setLoanAmount(value.toString())}
+                  max={10000000}
+                  min={100000}
+                  step={10000}
+                  className="mt-2"
+                />
                 <p className="text-xs text-muted-foreground">
-                  Minimum: ₹1,00,000 | Suggested: ₹5,00,000
+                  Range: ₹1,00,000 - ₹1,00,00,000
                 </p>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label htmlFor="interestRate">Annual Interest Rate (%)</Label>
                 <Input
                   id="interestRate"
@@ -91,12 +100,20 @@ const EMICalculator = () => {
                   placeholder="Enter interest rate"
                   className="text-lg"
                 />
+                <Slider
+                  value={[parseFloat(interestRate) || 8]}
+                  onValueChange={([value]) => setInterestRate(value.toString())}
+                  max={25}
+                  min={6}
+                  step={0.1}
+                  className="mt-2"
+                />
                 <p className="text-xs text-muted-foreground">
-                  Typical range: 8% - 15%
+                  Range: 6% - 25%
                 </p>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Label htmlFor="tenure">Loan Tenure (Years)</Label>
                 <Input
                   id="tenure"
@@ -106,8 +123,16 @@ const EMICalculator = () => {
                   placeholder="Enter tenure in years"
                   className="text-lg"
                 />
+                <Slider
+                  value={[parseFloat(tenure) || 5]}
+                  onValueChange={([value]) => setTenure(value.toString())}
+                  max={30}
+                  min={1}
+                  step={1}
+                  className="mt-2"
+                />
                 <p className="text-xs text-muted-foreground">
-                  Typical range: 5 - 30 years
+                  Range: 1 - 30 years
                 </p>
               </div>
 

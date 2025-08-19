@@ -29,6 +29,7 @@ const DesktopNavigation: React.FC = () => {
     { to: '/vault', label: 'Secure Vault' },
     { to: '/timetracker', label: 'Time Tracker' },
     { to: '/password', label: 'Password Generator' },
+    { to: '/base64', label: 'Base64 Encoder/Decoder' },
   ];
 
   return (

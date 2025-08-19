@@ -12,7 +12,8 @@ import {
   Wallet, 
   Shield,
   Clock,
-  Key
+  Key,
+  FileCode
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -87,6 +88,13 @@ const AllToolsPage = () => {
       icon: Key,
       path: '/password',
       color: 'bg-pink-500'
+    },
+    {
+      title: 'Base64 Encoder/Decoder',
+      description: 'Encode/decode text and files with no size limits',
+      icon: FileCode,
+      path: '/base64',
+      color: 'bg-cyan-500'
     }
   ];
 

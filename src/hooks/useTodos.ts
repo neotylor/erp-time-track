@@ -11,7 +11,7 @@ export const useTodos = () => {
 
   // Load todos from localStorage on component mount
   useEffect(() => {
-    const savedTodos = localStorage.getItem('taskflow-todos');
+    const savedTodos = localStorage.getItem('toolshub-todos');
     if (savedTodos) {
       try {
         const parsedTodos = JSON.parse(savedTodos).map((todo: any) => ({
@@ -29,7 +29,7 @@ export const useTodos = () => {
 
   // Save todos to localStorage whenever todos change
   useEffect(() => {
-    localStorage.setItem('taskflow-todos', JSON.stringify(todos));
+    localStorage.setItem('toolshub-todos', JSON.stringify(todos));
   }, [todos]);
 
   const addTodo = (title: string, description?: string, priority: 'high' | 'medium' | 'low' = 'medium', dueDate?: Date) => {

@@ -14,7 +14,7 @@ export const useNotes = () => {
 
   // Load notes from localStorage on component mount
   useEffect(() => {
-    const savedNotes = localStorage.getItem('taskflow-notes');
+    const savedNotes = localStorage.getItem('toolshub-notes');
     if (savedNotes) {
       try {
         const parsedNotes = JSON.parse(savedNotes).map((note: any) => ({
@@ -49,7 +49,7 @@ export const useNotes = () => {
       })) as Note[];
       
       setNotes(transformedNotes);
-      localStorage.setItem('taskflow-notes', JSON.stringify(transformedNotes));
+      localStorage.setItem('toolshub-notes', JSON.stringify(transformedNotes));
     } catch (error) {
       console.error('Error fetching notes:', error);
     } finally {
@@ -66,7 +66,7 @@ export const useNotes = () => {
 
   // Save notes to localStorage whenever notes change
   useEffect(() => {
-    localStorage.setItem('taskflow-notes', JSON.stringify(notes));
+    localStorage.setItem('toolshub-notes', JSON.stringify(notes));
   }, [notes]);
 
   // Create a new note

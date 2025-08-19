@@ -69,7 +69,7 @@ const ProductivityHub: React.FC = () => {
         <div className="max-w-4xl mx-auto">
           <div className="mb-8">
             <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              TaskFlow Pro
+              Tools Hub Pro
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto">
               Your all-in-one productivity companion. Streamline your workflow and boost efficiency with smart tools designed for modern professionals.
@@ -140,7 +140,7 @@ const ProductivityHub: React.FC = () => {
       <section className="px-4 py-16 bg-muted/30">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-8">
-            Why Choose <span className="text-primary">TaskFlow Pro</span>?
+            Why Choose <span className="text-primary">Tools Hub Pro</span>?
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center">
@@ -175,7 +175,7 @@ const ProductivityHub: React.FC = () => {
             Ready to Boost Your Productivity?
           </h2>
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join thousands of professionals who have transformed their workflow with TaskFlow Pro. Start your journey to peak productivity today.
+            Join thousands of professionals who have transformed their workflow with Tools Hub Pro. Start your journey to peak productivity today.
           </p>
           <Button asChild size="lg" className="text-lg px-8 py-3">
             <Link to="/todo">Start Your First Task</Link>

@@ -73,7 +73,7 @@ const Settings: React.FC = () => {
           <SettingsIcon className="h-16 w-16 mx-auto mb-4 text-primary" />
           <h1 className="text-3xl md:text-4xl font-bold mb-2">Settings</h1>
           <p className="text-lg text-muted-foreground">
-            Customize your TaskFlow Pro experience
+            Customize your Tools Hub Pro experience
           </p>
         </div>
 

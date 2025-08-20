@@ -13,7 +13,8 @@ import {
   Shield,
   Clock,
   Key,
-  FileCode
+  FileCode,
+  Palette
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -95,6 +96,13 @@ const AllToolsPage = () => {
       icon: FileCode,
       path: '/base64',
       color: 'bg-cyan-500'
+    },
+    {
+      title: 'Photo Art Editor',
+      description: 'Create and edit images with drawing tools and filters',
+      icon: Palette,
+      path: '/photo-art',
+      color: 'bg-violet-500'
     }
   ];
 

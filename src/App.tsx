@@ -27,6 +27,7 @@ import TimeTrackerPage from "./pages/TimeTrackerPage";
 import PasswordGeneratorPage from "./pages/PasswordGeneratorPage";
 import CalculatorPage from "./pages/CalculatorPage";
 import Base64Page from "./pages/Base64Page";
+import PhotoArtPage from "./pages/PhotoArtPage";
 
 const queryClient = new QueryClient();
 
@@ -74,7 +75,8 @@ const App = () => {
                     <Route path="/budget" element={<BudgetPage />} />
                     <Route path="/vault" element={<VaultPage />} />
                     <Route path="/timetracker" element={<TimeTrackerPage />} />
-                    <Route path="/base64" element={<Base64Page />} />
+        <Route path="/base64" element={<Base64Page />} />
+        <Route path="/photo-art" element={<PhotoArtPage />} />
                     <Route path="/goals" element={<div className="p-8 text-center"><h1 className="text-2xl">Goal Tracker - Coming Soon!</h1></div>} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />

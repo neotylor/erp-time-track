@@ -21,6 +21,7 @@ const MobileNavigation: React.FC = () => {
     { to: '/timetracker', label: 'Time Tracker' },
     { to: '/password', label: 'Password Generator' },
     { to: '/base64', label: 'Base64 Encoder/Decoder' },
+    { to: '/photo-art', label: 'Photo Art Editor' },
   ];
 
   return (

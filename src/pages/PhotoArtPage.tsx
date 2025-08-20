@@ -1,7 +1,7 @@
 import React from 'react';
-import PhotoArtEditor from '@/components/PhotoArtEditor';
+import PhotoArtEditor from '../components/PhotoArtEditor';
 
-const PhotoArtPage = () => {
+const PhotoArtPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       <PhotoArtEditor />

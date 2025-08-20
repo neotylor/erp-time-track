@@ -36,9 +36,18 @@ const PhotoArtEditor = () => {
       backgroundColor: "#ffffff",
     });
 
-    // Initialize the freeDrawingBrush
-    canvas.freeDrawingBrush.color = activeColor;
-    canvas.freeDrawingBrush.width = brushSize;
+    // Initialize drawing mode and brush for Fabric.js v6
+    canvas.isDrawingMode = false;
+    
+    // Create and configure the brush
+    try {
+      if (canvas.freeDrawingBrush) {
+        canvas.freeDrawingBrush.color = activeColor;
+        canvas.freeDrawingBrush.width = brushSize;
+      }
+    } catch (error) {
+      console.log("Brush initialization:", error);
+    }
 
     setFabricCanvas(canvas);
     toast.success("Photo Art Editor ready!");
@@ -46,16 +55,21 @@ const PhotoArtEditor = () => {
     return () => {
       canvas.dispose();
     };
-  }, []);
+  }, [activeColor, brushSize]);
 
   useEffect(() => {
     if (!fabricCanvas) return;
 
     fabricCanvas.isDrawingMode = activeTool === "draw";
     
-    if (activeTool === "draw" && fabricCanvas.freeDrawingBrush) {
-      fabricCanvas.freeDrawingBrush.color = activeColor;
-      fabricCanvas.freeDrawingBrush.width = brushSize;
+    // Safe brush configuration
+    try {
+      if (fabricCanvas.freeDrawingBrush) {
+        fabricCanvas.freeDrawingBrush.color = activeColor;
+        fabricCanvas.freeDrawingBrush.width = brushSize;
+      }
+    } catch (error) {
+      console.log("Brush configuration error:", error);
     }
   }, [activeTool, activeColor, brushSize, fabricCanvas]);
 

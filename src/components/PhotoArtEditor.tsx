@@ -18,6 +18,9 @@ import {
   Redo,
   Palette
 } from "lucide-react";
+import PhotopeaStartScreen from "./PhotopeaStartScreen";
+import PhotopeaMenuBar from "./PhotopeaMenuBar";
+import NewProjectDialog, { ProjectConfig } from "./NewProjectDialog";
 
 const PhotoArtEditor = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -26,14 +29,48 @@ const PhotoArtEditor = () => {
   const [activeColor, setActiveColor] = useState("#000000");
   const [activeTool, setActiveTool] = useState<"select" | "draw" | "rectangle" | "circle">("select");
   const [brushSize, setBrushSize] = useState(5);
+  
+  // New state for project workflow
+  const [showStartScreen, setShowStartScreen] = useState(true);
+  const [showNewProjectDialog, setShowNewProjectDialog] = useState(false);
+  const [currentProject, setCurrentProject] = useState<ProjectConfig | null>(null);
 
+  // New workflow handlers
+  const handleNewProject = () => {
+    setShowNewProjectDialog(true);
+  };
+
+  const handleOpenFile = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleCreateProject = (config: ProjectConfig) => {
+    setCurrentProject(config);
+    setShowStartScreen(false);
+    toast.success(`Project "${config.name}" created!`);
+  };
+
+  const handleShowTemplates = () => {
+    setShowNewProjectDialog(true);
+  };
+
+  const handleBackToStart = () => {
+    setShowStartScreen(true);
+    setCurrentProject(null);
+    if (fabricCanvas) {
+      fabricCanvas.dispose();
+      setFabricCanvas(null);
+    }
+  };
+
+  // Initialize canvas only when project is created
   useEffect(() => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || !currentProject || showStartScreen) return;
 
     const canvas = new FabricCanvas(canvasRef.current, {
-      width: 800,
-      height: 600,
-      backgroundColor: "#ffffff",
+      width: currentProject.width,
+      height: currentProject.height,
+      backgroundColor: currentProject.background === "transparent" ? "transparent" : currentProject.background,
     });
 
     // Initialize drawing mode and brush for Fabric.js v6
@@ -50,13 +87,13 @@ const PhotoArtEditor = () => {
     }
 
     setFabricCanvas(canvas);
-    toast.success("Photo Art Editor ready!");
 
     return () => {
       canvas.dispose();
     };
-  }, [activeColor, brushSize]);
+  }, [currentProject, showStartScreen, activeColor, brushSize]);
 
+  // Update brush settings when they change
   useEffect(() => {
     if (!fabricCanvas) return;
 
@@ -137,7 +174,7 @@ const PhotoArtEditor = () => {
     });
     
     const link = document.createElement('a');
-    link.download = 'photo-art.png';
+    link.download = `${currentProject?.name || 'photo-art'}.png`;
     link.href = dataURL;
     link.click();
     toast.success("Image downloaded!");
@@ -146,7 +183,7 @@ const PhotoArtEditor = () => {
   const handleClear = () => {
     if (!fabricCanvas) return;
     fabricCanvas.clear();
-    fabricCanvas.backgroundColor = "#ffffff";
+    fabricCanvas.backgroundColor = currentProject?.background === "transparent" ? "transparent" : currentProject?.background || "#ffffff";
     fabricCanvas.renderAll();
     toast.success("Canvas cleared!");
   };
@@ -171,168 +208,227 @@ const PhotoArtEditor = () => {
     }
   };
 
+  // Show start screen initially
+  if (showStartScreen) {
+    return (
+      <>
+        <PhotopeaStartScreen
+          onNewProject={handleNewProject}
+          onOpenFile={handleOpenFile}
+          onTemplates={handleShowTemplates}
+        />
+        <NewProjectDialog
+          open={showNewProjectDialog}
+          onOpenChange={setShowNewProjectDialog}
+          onCreateProject={handleCreateProject}
+        />
+      </>
+    );
+  }
+
   return (
-    <div className="flex flex-col lg:flex-row h-screen bg-background">
-      {/* Toolbar */}
-      <Card className="lg:w-80 m-4 lg:h-fit">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Palette className="h-5 w-5" />
-            Photo Art Editor
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* File Operations */}
-          <div className="space-y-2">
-            <Label>File</Label>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-                className="flex-1"
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Upload
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDownload}
-                className="flex-1"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Save
-              </Button>
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-              className="hidden"
-            />
-          </div>
-
-          <Separator />
-
-          {/* Tools */}
-          <div className="space-y-2">
-            <Label>Tools</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant={activeTool === "select" ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleToolClick("select")}
-              >
-                <MousePointer className="h-4 w-4 mr-2" />
-                Select
-              </Button>
-              <Button
-                variant={activeTool === "draw" ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleToolClick("draw")}
-              >
-                <Brush className="h-4 w-4 mr-2" />
-                Draw
-              </Button>
-              <Button
-                variant={activeTool === "rectangle" ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleToolClick("rectangle")}
-              >
-                <Square className="h-4 w-4 mr-2" />
-                Rectangle
-              </Button>
-              <Button
-                variant={activeTool === "circle" ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleToolClick("circle")}
-              >
-                <CircleIcon className="h-4 w-4 mr-2" />
-                Circle
-              </Button>
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Color and Brush */}
-          <div className="space-y-2">
-            <Label>Color</Label>
-            <div className="flex gap-2 items-center">
-              <Input
-                type="color"
-                value={activeColor}
-                onChange={(e) => setActiveColor(e.target.value)}
-                className="w-16 h-10 p-1 border rounded"
-              />
-              <Input
-                value={activeColor}
-                onChange={(e) => setActiveColor(e.target.value)}
-                placeholder="#000000"
-                className="flex-1"
+    <div className="flex flex-col h-screen bg-background">
+      {/* Menu Bar */}
+      <PhotopeaMenuBar
+        onNewProject={handleNewProject}
+        onOpenFile={handleOpenFile}
+        onSave={handleDownload}
+        onExport={handleDownload}
+        onUndo={handleUndo}
+        onRedo={() => {}} // TODO: implement redo
+        onClear={handleClear}
+        onShowTemplates={handleShowTemplates}
+      />
+      
+      <div className="flex flex-1 overflow-hidden">
+        {/* Toolbar */}
+        <Card className="w-80 m-4 h-fit">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Palette className="h-5 w-5" />
+              {currentProject?.name || "Photo Art Editor"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* File Operations */}
+            <div className="space-y-2">
+              <Label>File</Label>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex-1"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownload}
+                  className="flex-1"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Save
+                </Button>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
               />
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label>Brush Size: {brushSize}px</Label>
-            <Input
-              type="range"
-              min="1"
-              max="50"
-              value={brushSize}
-              onChange={(e) => setBrushSize(Number(e.target.value))}
-              className="w-full"
-            />
-          </div>
+            <Separator />
 
-          <Separator />
-
-          {/* Actions */}
-          <div className="space-y-2">
-            <Label>Actions</Label>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleUndo}
-              >
-                <Undo className="h-4 w-4 mr-2" />
-                Undo
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleDeleteSelected}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
-              </Button>
+            {/* Tools */}
+            <div className="space-y-2">
+              <Label>Tools</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant={activeTool === "select" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleToolClick("select")}
+                >
+                  <MousePointer className="h-4 w-4 mr-2" />
+                  Select
+                </Button>
+                <Button
+                  variant={activeTool === "draw" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleToolClick("draw")}
+                >
+                  <Brush className="h-4 w-4 mr-2" />
+                  Draw
+                </Button>
+                <Button
+                  variant={activeTool === "rectangle" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleToolClick("rectangle")}
+                >
+                  <Square className="h-4 w-4 mr-2" />
+                  Rectangle
+                </Button>
+                <Button
+                  variant={activeTool === "circle" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleToolClick("circle")}
+                >
+                  <CircleIcon className="h-4 w-4 mr-2" />
+                  Circle
+                </Button>
+              </div>
             </div>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleClear}
-              className="w-full"
-            >
-              Clear All
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Canvas Area */}
-      <div className="flex-1 p-4">
-        <Card className="h-full">
-          <CardContent className="p-4 h-full flex items-center justify-center">
-            <div className="border border-border rounded-lg shadow-lg overflow-hidden bg-white">
-              <canvas ref={canvasRef} className="max-w-full max-h-full" />
+            <Separator />
+
+            {/* Color and Brush */}
+            <div className="space-y-2">
+              <Label>Color</Label>
+              <div className="flex gap-2 items-center">
+                <Input
+                  type="color"
+                  value={activeColor}
+                  onChange={(e) => setActiveColor(e.target.value)}
+                  className="w-16 h-10 p-1 border rounded"
+                />
+                <Input
+                  value={activeColor}
+                  onChange={(e) => setActiveColor(e.target.value)}
+                  placeholder="#000000"
+                  className="flex-1"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Brush Size: {brushSize}px</Label>
+              <Input
+                type="range"
+                min="1"
+                max="50"
+                value={brushSize}
+                onChange={(e) => setBrushSize(Number(e.target.value))}
+                className="w-full"
+              />
+            </div>
+
+            <Separator />
+
+            {/* Actions */}
+            <div className="space-y-2">
+              <Label>Actions</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleUndo}
+                >
+                  <Undo className="h-4 w-4 mr-2" />
+                  Undo
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDeleteSelected}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+              </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleClear}
+                className="w-full"
+              >
+                Clear All
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleBackToStart}
+                className="w-full"
+              >
+                Back to Start
+              </Button>
             </div>
           </CardContent>
         </Card>
+
+        {/* Canvas Area */}
+        <div className="flex-1 p-4">
+          <Card className="h-full">
+            <CardContent className="p-4 h-full flex items-center justify-center">
+              <div 
+                className="border border-border rounded-lg shadow-lg overflow-hidden" 
+                style={{ 
+                  backgroundColor: currentProject?.background === "transparent" 
+                    ? "transparent" 
+                    : currentProject?.background || "white",
+                  backgroundImage: currentProject?.background === "transparent" 
+                    ? "linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)"
+                    : "none",
+                  backgroundSize: currentProject?.background === "transparent" ? "20px 20px" : "auto",
+                  backgroundPosition: currentProject?.background === "transparent" ? "0 0, 0 10px, 10px -10px, -10px 0px" : "0 0"
+                }}
+              >
+                <canvas ref={canvasRef} className="max-w-full max-h-full" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
+
+      {/* Dialogs */}
+      <NewProjectDialog
+        open={showNewProjectDialog}
+        onOpenChange={setShowNewProjectDialog}
+        onCreateProject={handleCreateProject}
+      />
     </div>
   );
 };

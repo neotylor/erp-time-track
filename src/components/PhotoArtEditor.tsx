@@ -1,34 +1,38 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Canvas as FabricCanvas, Circle, Rect, FabricImage } from "fabric";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
+import React, { useEffect, useRef, useState, useCallback } from "react";
+import { Canvas as FabricCanvas, Circle, Rect, FabricImage, PencilBrush, FabricObject } from "fabric";
+import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import {
-  Upload,
-  Download,
-  Square,
-  Circle as CircleIcon,
-  Brush,
-  MousePointer,
-  Trash2,
-  Undo,
-  Redo,
-  Palette
-} from "lucide-react";
 import PhotopeaStartScreen from "./PhotopeaStartScreen";
 import PhotopeaMenuBar from "./PhotopeaMenuBar";
 import NewProjectDialog, { ProjectConfig } from "./NewProjectDialog";
 import BrushSettings, { BrushConfig } from "./BrushSettings";
+import ToolsPanel from "./ToolsPanel";
+import LayersPanel from "./LayersPanel";
+import PropertiesPanel from "./PropertiesPanel";
+
+// Extend FabricObject to include custom properties
+interface ExtendedFabricObject extends FabricObject {
+  id?: string;
+  name?: string;
+}
+
+interface Layer {
+  id: string;
+  name: string;
+  visible: boolean;
+  locked: boolean;
+  opacity: number;
+  type: string;
+}
 
 const PhotoArtEditor = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
   const [activeColor, setActiveColor] = useState("#000000");
-  const [activeTool, setActiveTool] = useState<"select" | "draw" | "rectangle" | "circle">("select");
+  const [activeTool, setActiveTool] = useState<string>("select");
+  const [selectedObject, setSelectedObject] = useState<any>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
   const [brushConfig, setBrushConfig] = useState<BrushConfig>({
     size: 10,
     opacity: 1,
@@ -38,10 +42,14 @@ const PhotoArtEditor = () => {
     blendMode: "normal"
   });
   
-  // New state for project workflow
+  // Project workflow state
   const [showStartScreen, setShowStartScreen] = useState(true);
   const [showNewProjectDialog, setShowNewProjectDialog] = useState(false);
   const [currentProject, setCurrentProject] = useState<ProjectConfig | null>(null);
+  
+  // Layer management state
+  const [layers, setLayers] = useState<Layer[]>([]);
+  const [selectedLayer, setSelectedLayer] = useState<string | null>(null);
 
   // New workflow handlers
   const handleNewProject = () => {
@@ -81,80 +89,205 @@ const PhotoArtEditor = () => {
       backgroundColor: currentProject.background === "transparent" ? "transparent" : currentProject.background,
     });
 
-    // Initialize drawing mode and brush for Fabric.js v6
+    // Initialize brush
+    const brush = new PencilBrush(canvas);
+    brush.width = brushConfig.size;
+    brush.color = activeColor;
+    canvas.freeDrawingBrush = brush;
     canvas.isDrawingMode = false;
     
-     // Create and configure the brush
-    try {
-      if (canvas.freeDrawingBrush) {
-        canvas.freeDrawingBrush.color = activeColor;
-        canvas.freeDrawingBrush.width = brushConfig.size;
+    // Add event listeners
+    canvas.on('selection:created', (e) => {
+      setSelectedObject((e as any).selected?.[0]);
+    });
+    
+    canvas.on('selection:updated', (e) => {
+      setSelectedObject((e as any).selected?.[0]);
+    });
+    
+    canvas.on('selection:cleared', () => {
+      setSelectedObject(null);
+    });
+    
+    canvas.on('object:added', (e) => {
+      const obj = e.target as ExtendedFabricObject;
+      if (obj && !obj.id) {
+        obj.id = `layer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        updateLayers(canvas);
       }
-    } catch (error) {
-      console.log("Brush initialization:", error);
-    }
+    });
+    
+    canvas.on('object:removed', () => {
+      updateLayers(canvas);
+    });
 
     setFabricCanvas(canvas);
+    
+    // Initialize background layer
+    setLayers([{
+      id: 'background',
+      name: 'Background',
+      visible: true,
+      locked: false,
+      opacity: 1,
+      type: 'background'
+    }]);
 
     return () => {
       canvas.dispose();
     };
-  }, [currentProject, showStartScreen, activeColor, brushConfig]);
+  }, [currentProject, showStartScreen]);
 
-   // Update brush settings when they change
+  // Update tool behavior
   useEffect(() => {
     if (!fabricCanvas) return;
 
-    fabricCanvas.isDrawingMode = activeTool === "draw";
+    // Reset canvas interaction modes
+    fabricCanvas.isDrawingMode = false;
+    fabricCanvas.selection = true;
+    fabricCanvas.defaultCursor = 'default';
     
-    // Configure advanced brush settings
-    try {
-      if (fabricCanvas.freeDrawingBrush) {
-        // Basic properties
-        fabricCanvas.freeDrawingBrush.width = brushConfig.size;
-        
-        // Apply opacity to color
-        const hexColor = activeColor;
-        const r = parseInt(hexColor.slice(1, 3), 16);
-        const g = parseInt(hexColor.slice(3, 5), 16);
-        const b = parseInt(hexColor.slice(5, 7), 16);
-        const rgbaColor = `rgba(${r}, ${g}, ${b}, ${brushConfig.opacity})`;
-        fabricCanvas.freeDrawingBrush.color = rgbaColor;
-
-        // Apply brush type specific settings (simplified for Fabric.js compatibility)
-        // Note: Advanced features like shadows are limited by Fabric.js v6 API
-        if (brushConfig.type === "soft") {
-          // For soft brushes, we could implement custom brush patterns in future
-          console.log("Soft brush selected - advanced features coming soon");
+    switch (activeTool) {
+      case "draw":
+        fabricCanvas.isDrawingMode = true;
+        fabricCanvas.selection = false;
+        if (fabricCanvas.freeDrawingBrush) {
+          fabricCanvas.freeDrawingBrush.width = brushConfig.size;
+          const hexColor = activeColor;
+          const r = parseInt(hexColor.slice(1, 3), 16);
+          const g = parseInt(hexColor.slice(3, 5), 16);
+          const b = parseInt(hexColor.slice(5, 7), 16);
+          const rgbaColor = `rgba(${r}, ${g}, ${b}, ${brushConfig.opacity})`;
+          fabricCanvas.freeDrawingBrush.color = rgbaColor;
         }
-      }
-    } catch (error) {
-      console.log("Advanced brush configuration error:", error);
+        break;
+      case "select":
+        fabricCanvas.defaultCursor = 'default';
+        break;
+      case "move":
+        fabricCanvas.defaultCursor = 'move';
+        break;
+      case "rectangle":
+      case "circle":
+      case "text":
+        fabricCanvas.selection = false;
+        fabricCanvas.defaultCursor = 'crosshair';
+        break;
+      default:
+        break;
     }
   }, [activeTool, activeColor, brushConfig, fabricCanvas]);
+  
+  // Update layers when canvas objects change
+  const updateLayers = useCallback((canvas: FabricCanvas) => {
+    const objects = canvas.getObjects() as ExtendedFabricObject[];
+    const newLayers: Layer[] = [
+      {
+        id: 'background',
+        name: 'Background',
+        visible: true,
+        locked: false,
+        opacity: 1,
+        type: 'background'
+      },
+      ...objects.map((obj, index) => ({
+        id: obj.id || `layer_${index}`,
+        name: obj.name || `${obj.type} ${index + 1}`,
+        visible: obj.visible !== false,
+        locked: obj.selectable === false,
+        opacity: obj.opacity || 1,
+        type: obj.type || 'object'
+      }))
+    ];
+    setLayers(newLayers);
+  }, []);
 
-  const handleToolClick = (tool: typeof activeTool) => {
-    setActiveTool(tool);
-
-    if (tool === "rectangle") {
-      const rect = new Rect({
-        left: 100,
-        top: 100,
-        fill: activeColor,
-        width: 100,
-        height: 100,
-      });
-      fabricCanvas?.add(rect);
-    } else if (tool === "circle") {
-      const circle = new Circle({
-        left: 100,
-        top: 100,
-        fill: activeColor,
-        radius: 50,
-      });
-      fabricCanvas?.add(circle);
+  // Handle shape drawing
+  const handleCanvasMouseDown = useCallback((e: any) => {
+    if (!fabricCanvas || activeTool === "select" || activeTool === "draw" || activeTool === "move") return;
+    
+    const pointer = fabricCanvas.getPointer(e.e);
+    setIsDrawing(true);
+    
+    let shape: any = null;
+    
+    switch (activeTool) {
+      case "rectangle":
+        shape = new Rect({
+          left: pointer.x,
+          top: pointer.y,
+          width: 0,
+          height: 0,
+          fill: activeColor,
+          stroke: activeColor,
+          strokeWidth: 2,
+        });
+        break;
+      case "circle":
+        shape = new Circle({
+          left: pointer.x,
+          top: pointer.y,
+          radius: 0,
+          fill: activeColor,
+          stroke: activeColor,
+          strokeWidth: 2,
+        });
+        break;
     }
-  };
+    
+    if (shape) {
+      fabricCanvas.add(shape);
+      fabricCanvas.setActiveObject(shape);
+    }
+  }, [fabricCanvas, activeTool, activeColor]);
+
+  const handleCanvasMouseMove = useCallback((e: any) => {
+    if (!fabricCanvas || !isDrawing || activeTool === "select" || activeTool === "draw" || activeTool === "move") return;
+    
+    const pointer = fabricCanvas.getPointer(e.e);
+    const activeObject = fabricCanvas.getActiveObject();
+    
+    if (activeObject && activeTool === "rectangle") {
+      const rect = activeObject as Rect;
+      const startX = rect.left!;
+      const startY = rect.top!;
+      
+      rect.set({
+        width: Math.abs(pointer.x - startX),
+        height: Math.abs(pointer.y - startY),
+        left: Math.min(startX, pointer.x),
+        top: Math.min(startY, pointer.y),
+      });
+    } else if (activeObject && activeTool === "circle") {
+      const circle = activeObject as Circle;
+      const startX = circle.left!;
+      const startY = circle.top!;
+      
+      const radius = Math.sqrt(Math.pow(pointer.x - startX, 2) + Math.pow(pointer.y - startY, 2));
+      circle.set({ radius });
+    }
+    
+    fabricCanvas.renderAll();
+  }, [fabricCanvas, isDrawing, activeTool]);
+
+  const handleCanvasMouseUp = useCallback(() => {
+    setIsDrawing(false);
+  }, []);
+
+  // Add canvas event listeners
+  useEffect(() => {
+    if (!fabricCanvas) return;
+    
+    fabricCanvas.on('mouse:down', handleCanvasMouseDown);
+    fabricCanvas.on('mouse:move', handleCanvasMouseMove);
+    fabricCanvas.on('mouse:up', handleCanvasMouseUp);
+    
+    return () => {
+      fabricCanvas.off('mouse:down', handleCanvasMouseDown);
+      fabricCanvas.off('mouse:move', handleCanvasMouseMove);
+      fabricCanvas.off('mouse:up', handleCanvasMouseUp);
+    };
+  }, [fabricCanvas, handleCanvasMouseDown, handleCanvasMouseMove, handleCanvasMouseUp]);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -227,8 +360,85 @@ const PhotoArtEditor = () => {
     if (activeObject) {
       fabricCanvas.remove(activeObject);
       fabricCanvas.renderAll();
+      updateLayers(fabricCanvas);
       toast.success("Object deleted!");
     }
+  };
+  
+  // Layer management handlers
+  const handleLayerSelect = (layerId: string) => {
+    if (!fabricCanvas || layerId === 'background') return;
+    
+    const objects = fabricCanvas.getObjects() as ExtendedFabricObject[];
+    const targetObject = objects.find(obj => obj.id === layerId);
+    
+    if (targetObject) {
+      fabricCanvas.setActiveObject(targetObject);
+      fabricCanvas.renderAll();
+    }
+    setSelectedLayer(layerId);
+  };
+
+  const handleLayerVisibilityToggle = (layerId: string) => {
+    if (!fabricCanvas || layerId === 'background') return;
+    
+    const objects = fabricCanvas.getObjects() as ExtendedFabricObject[];
+    const targetObject = objects.find(obj => obj.id === layerId);
+    
+    if (targetObject) {
+      targetObject.visible = !targetObject.visible;
+      fabricCanvas.renderAll();
+      updateLayers(fabricCanvas);
+    }
+  };
+
+  const handleLayerLockToggle = (layerId: string) => {
+    if (!fabricCanvas || layerId === 'background') return;
+    
+    const objects = fabricCanvas.getObjects() as ExtendedFabricObject[];
+    const targetObject = objects.find(obj => obj.id === layerId);
+    
+    if (targetObject) {
+      targetObject.selectable = !targetObject.selectable;
+      targetObject.evented = !targetObject.evented;
+      fabricCanvas.renderAll();
+      updateLayers(fabricCanvas);
+    }
+  };
+
+  const handleLayerDelete = (layerId: string) => {
+    if (!fabricCanvas || layerId === 'background') return;
+    
+    const objects = fabricCanvas.getObjects() as ExtendedFabricObject[];
+    const targetObject = objects.find(obj => obj.id === layerId);
+    
+    if (targetObject) {
+      fabricCanvas.remove(targetObject);
+      fabricCanvas.renderAll();
+      updateLayers(fabricCanvas);
+      toast.success("Layer deleted!");
+    }
+  };
+
+  const handleLayerRename = (layerId: string, newName: string) => {
+    if (!fabricCanvas) return;
+    
+    const objects = fabricCanvas.getObjects() as ExtendedFabricObject[];
+    const targetObject = objects.find(obj => obj.id === layerId);
+    
+    if (targetObject) {
+      targetObject.name = newName;
+      updateLayers(fabricCanvas);
+    }
+  };
+  
+  // Properties panel handlers
+  const handlePropertyChange = (property: string, value: any) => {
+    if (!fabricCanvas || !selectedObject) return;
+    
+    selectedObject.set(property, value);
+    fabricCanvas.renderAll();
+    updateLayers(fabricCanvas);
   };
 
   // Show start screen initially
@@ -263,190 +473,94 @@ const PhotoArtEditor = () => {
         onShowTemplates={handleShowTemplates}
       />
       
+      {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Toolbar */}
-        <div className="w-80 m-4 space-y-4">
-          <Card className="h-fit">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Palette className="h-5 w-5" />
-              {currentProject?.name || "Photo Art Editor"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* File Operations */}
-            <div className="space-y-2">
-              <Label>File</Label>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex-1"
+        {/* Left Tools Panel */}
+        <ToolsPanel
+          activeTool={activeTool}
+          activeColor={activeColor}
+          brushConfig={brushConfig}
+          onToolChange={setActiveTool}
+          onColorChange={setActiveColor}
+          onBrushConfigChange={setBrushConfig}
+          onUpload={() => fileInputRef.current?.click()}
+          onDownload={handleDownload}
+          onUndo={handleUndo}
+          onRedo={() => {}} // TODO: implement redo
+          onClear={handleClear}
+          onDeleteSelected={handleDeleteSelected}
+        />
+        
+        {/* Canvas Area */}
+        <div className="flex-1 flex flex-col bg-muted/20">
+          <div className="flex-1 p-4">
+            <Card className="h-full">
+              <CardContent className="p-4 h-full flex items-center justify-center">
+                <div 
+                  className="border border-border rounded-lg shadow-lg overflow-hidden" 
+                  style={{ 
+                    backgroundColor: currentProject?.background === "transparent" 
+                      ? "transparent" 
+                      : currentProject?.background || "white",
+                    backgroundImage: currentProject?.background === "transparent" 
+                      ? "linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)"
+                      : "none",
+                    backgroundSize: currentProject?.background === "transparent" ? "20px 20px" : "auto",
+                    backgroundPosition: currentProject?.background === "transparent" ? "0 0, 0 10px, 10px -10px, -10px 0px" : "0 0"
+                  }}
                 >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDownload}
-                  className="flex-1"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Save
-                </Button>
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-              />
-            </div>
-
-            <Separator />
-
-            {/* Tools */}
-            <div className="space-y-2">
-              <Label>Tools</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant={activeTool === "select" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => handleToolClick("select")}
-                >
-                  <MousePointer className="h-4 w-4 mr-2" />
-                  Select
-                </Button>
-                <Button
-                  variant={activeTool === "draw" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => handleToolClick("draw")}
-                >
-                  <Brush className="h-4 w-4 mr-2" />
-                  Draw
-                </Button>
-                <Button
-                  variant={activeTool === "rectangle" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => handleToolClick("rectangle")}
-                >
-                  <Square className="h-4 w-4 mr-2" />
-                  Rectangle
-                </Button>
-                <Button
-                  variant={activeTool === "circle" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => handleToolClick("circle")}
-                >
-                  <CircleIcon className="h-4 w-4 mr-2" />
-                  Circle
-                </Button>
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Brush Settings - Only show when draw tool is active */}
-            {activeTool === "draw" && (
+                  <canvas ref={canvasRef} className="max-w-full max-h-full" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+        
+        {/* Right Panels */}
+        <div className="w-80 bg-background border-l flex flex-col">
+          {/* Brush Settings - Only show when draw tool is active */}
+          {activeTool === "draw" && (
+            <div className="border-b">
               <BrushSettings
                 config={brushConfig}
                 onChange={setBrushConfig}
                 color={activeColor}
                 onColorChange={setActiveColor}
               />
-            )}
-
-            {/* Basic Color picker for other tools */}
-            {activeTool !== "draw" && (
-              <div className="space-y-2">
-                <Label>Color</Label>
-                <div className="flex gap-2 items-center">
-                  <Input
-                    type="color"
-                    value={activeColor}
-                    onChange={(e) => setActiveColor(e.target.value)}
-                    className="w-16 h-10 p-1 border rounded"
-                  />
-                  <Input
-                    value={activeColor}
-                    onChange={(e) => setActiveColor(e.target.value)}
-                    placeholder="#000000"
-                    className="flex-1"
-                  />
-                </div>
-              </div>
-            )}
-
-            <Separator />
-
-            {/* Actions */}
-            <div className="space-y-2">
-              <Label>Actions</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleUndo}
-                >
-                  <Undo className="h-4 w-4 mr-2" />
-                  Undo
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDeleteSelected}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </Button>
-              </div>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleClear}
-                className="w-full"
-              >
-                Clear All
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleBackToStart}
-                className="w-full"
-              >
-                Back to Start
-              </Button>
             </div>
-          </CardContent>
-        </Card>
-        </div>
-
-        {/* Canvas Area */}
-        <div className="flex-1 p-4">
-          <Card className="h-full">
-            <CardContent className="p-4 h-full flex items-center justify-center">
-              <div 
-                className="border border-border rounded-lg shadow-lg overflow-hidden" 
-                style={{ 
-                  backgroundColor: currentProject?.background === "transparent" 
-                    ? "transparent" 
-                    : currentProject?.background || "white",
-                  backgroundImage: currentProject?.background === "transparent" 
-                    ? "linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)"
-                    : "none",
-                  backgroundSize: currentProject?.background === "transparent" ? "20px 20px" : "auto",
-                  backgroundPosition: currentProject?.background === "transparent" ? "0 0, 0 10px, 10px -10px, -10px 0px" : "0 0"
-                }}
-              >
-                <canvas ref={canvasRef} className="max-w-full max-h-full" />
-              </div>
-            </CardContent>
-          </Card>
+          )}
+          
+          {/* Properties Panel */}
+          <div className="flex-1 border-b">
+            <PropertiesPanel
+              selectedObject={selectedObject}
+              onPropertyChange={handlePropertyChange}
+            />
+          </div>
+          
+          {/* Layers Panel */}
+          <div className="flex-1">
+            <LayersPanel
+              layers={layers}
+              selectedLayer={selectedLayer}
+              onLayerSelect={handleLayerSelect}
+              onLayerVisibilityToggle={handleLayerVisibilityToggle}
+              onLayerLockToggle={handleLayerLockToggle}
+              onLayerDelete={handleLayerDelete}
+              onLayerRename={handleLayerRename}
+            />
+          </div>
         </div>
       </div>
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleImageUpload}
+        className="hidden"
+      />
 
       {/* Dialogs */}
       <NewProjectDialog

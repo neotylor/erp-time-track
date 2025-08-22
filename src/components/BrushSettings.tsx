@@ -51,10 +51,10 @@ const BrushSettings: React.FC<BrushSettingsProps> = ({
   ] as const;
 
   return (
-    <Card className="w-80">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Brush className="h-5 w-5" />
+    <Card className="w-full">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <Brush className="h-4 w-4" />
           Brush Settings
         </CardTitle>
       </CardHeader>

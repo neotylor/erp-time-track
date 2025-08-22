@@ -21,6 +21,7 @@ import {
 import PhotopeaStartScreen from "./PhotopeaStartScreen";
 import PhotopeaMenuBar from "./PhotopeaMenuBar";
 import NewProjectDialog, { ProjectConfig } from "./NewProjectDialog";
+import BrushSettings, { BrushConfig } from "./BrushSettings";
 
 const PhotoArtEditor = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -28,7 +29,14 @@ const PhotoArtEditor = () => {
   const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
   const [activeColor, setActiveColor] = useState("#000000");
   const [activeTool, setActiveTool] = useState<"select" | "draw" | "rectangle" | "circle">("select");
-  const [brushSize, setBrushSize] = useState(5);
+  const [brushConfig, setBrushConfig] = useState<BrushConfig>({
+    size: 10,
+    opacity: 1,
+    hardness: 1,
+    flow: 1,
+    type: "round",
+    blendMode: "normal"
+  });
   
   // New state for project workflow
   const [showStartScreen, setShowStartScreen] = useState(true);
@@ -76,11 +84,11 @@ const PhotoArtEditor = () => {
     // Initialize drawing mode and brush for Fabric.js v6
     canvas.isDrawingMode = false;
     
-    // Create and configure the brush
+     // Create and configure the brush
     try {
       if (canvas.freeDrawingBrush) {
         canvas.freeDrawingBrush.color = activeColor;
-        canvas.freeDrawingBrush.width = brushSize;
+        canvas.freeDrawingBrush.width = brushConfig.size;
       }
     } catch (error) {
       console.log("Brush initialization:", error);
@@ -91,24 +99,39 @@ const PhotoArtEditor = () => {
     return () => {
       canvas.dispose();
     };
-  }, [currentProject, showStartScreen, activeColor, brushSize]);
+  }, [currentProject, showStartScreen, activeColor, brushConfig]);
 
-  // Update brush settings when they change
+   // Update brush settings when they change
   useEffect(() => {
     if (!fabricCanvas) return;
 
     fabricCanvas.isDrawingMode = activeTool === "draw";
     
-    // Safe brush configuration
+    // Configure advanced brush settings
     try {
       if (fabricCanvas.freeDrawingBrush) {
-        fabricCanvas.freeDrawingBrush.color = activeColor;
-        fabricCanvas.freeDrawingBrush.width = brushSize;
+        // Basic properties
+        fabricCanvas.freeDrawingBrush.width = brushConfig.size;
+        
+        // Apply opacity to color
+        const hexColor = activeColor;
+        const r = parseInt(hexColor.slice(1, 3), 16);
+        const g = parseInt(hexColor.slice(3, 5), 16);
+        const b = parseInt(hexColor.slice(5, 7), 16);
+        const rgbaColor = `rgba(${r}, ${g}, ${b}, ${brushConfig.opacity})`;
+        fabricCanvas.freeDrawingBrush.color = rgbaColor;
+
+        // Apply brush type specific settings (simplified for Fabric.js compatibility)
+        // Note: Advanced features like shadows are limited by Fabric.js v6 API
+        if (brushConfig.type === "soft") {
+          // For soft brushes, we could implement custom brush patterns in future
+          console.log("Soft brush selected - advanced features coming soon");
+        }
       }
     } catch (error) {
-      console.log("Brush configuration error:", error);
+      console.log("Advanced brush configuration error:", error);
     }
-  }, [activeTool, activeColor, brushSize, fabricCanvas]);
+  }, [activeTool, activeColor, brushConfig, fabricCanvas]);
 
   const handleToolClick = (tool: typeof activeTool) => {
     setActiveTool(tool);
@@ -242,7 +265,8 @@ const PhotoArtEditor = () => {
       
       <div className="flex flex-1 overflow-hidden">
         {/* Toolbar */}
-        <Card className="w-80 m-4 h-fit">
+        <div className="w-80 m-4 space-y-4">
+          <Card className="h-fit">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Palette className="h-5 w-5" />
@@ -325,36 +349,36 @@ const PhotoArtEditor = () => {
 
             <Separator />
 
-            {/* Color and Brush */}
-            <div className="space-y-2">
-              <Label>Color</Label>
-              <div className="flex gap-2 items-center">
-                <Input
-                  type="color"
-                  value={activeColor}
-                  onChange={(e) => setActiveColor(e.target.value)}
-                  className="w-16 h-10 p-1 border rounded"
-                />
-                <Input
-                  value={activeColor}
-                  onChange={(e) => setActiveColor(e.target.value)}
-                  placeholder="#000000"
-                  className="flex-1"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Brush Size: {brushSize}px</Label>
-              <Input
-                type="range"
-                min="1"
-                max="50"
-                value={brushSize}
-                onChange={(e) => setBrushSize(Number(e.target.value))}
-                className="w-full"
+            {/* Brush Settings - Only show when draw tool is active */}
+            {activeTool === "draw" && (
+              <BrushSettings
+                config={brushConfig}
+                onChange={setBrushConfig}
+                color={activeColor}
+                onColorChange={setActiveColor}
               />
-            </div>
+            )}
+
+            {/* Basic Color picker for other tools */}
+            {activeTool !== "draw" && (
+              <div className="space-y-2">
+                <Label>Color</Label>
+                <div className="flex gap-2 items-center">
+                  <Input
+                    type="color"
+                    value={activeColor}
+                    onChange={(e) => setActiveColor(e.target.value)}
+                    className="w-16 h-10 p-1 border rounded"
+                  />
+                  <Input
+                    value={activeColor}
+                    onChange={(e) => setActiveColor(e.target.value)}
+                    placeholder="#000000"
+                    className="flex-1"
+                  />
+                </div>
+              </div>
+            )}
 
             <Separator />
 
@@ -398,6 +422,7 @@ const PhotoArtEditor = () => {
             </div>
           </CardContent>
         </Card>
+        </div>
 
         {/* Canvas Area */}
         <div className="flex-1 p-4">

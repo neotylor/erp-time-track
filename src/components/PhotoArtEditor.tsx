@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { Canvas as FabricCanvas, Circle, Rect, FabricImage, PencilBrush, FabricObject } from "fabric";
+import { Canvas as FabricCanvas, Circle, Rect, FabricImage, PencilBrush, FabricObject, Point } from "fabric";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -57,6 +57,13 @@ const PhotoArtEditor = () => {
   // UI state
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   
+  // Zoom and pan state
+  const [zoom, setZoom] = useState(1);
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
+  const [isPanning, setIsPanning] = useState(false);
+  const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
+  
   // History management for undo/redo
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -87,6 +94,11 @@ const PhotoArtEditor = () => {
       fabricCanvas.dispose();
       setFabricCanvas(null);
     }
+  };
+
+  const handleClose = () => {
+    // Navigate back to main page
+    window.location.href = '/';
   };
 
   // Initialize canvas only when project is created
@@ -359,6 +371,23 @@ const PhotoArtEditor = () => {
               fabricCanvas.renderAll();
             }
             break;
+          case '=':
+          case '+':
+            e.preventDefault();
+            handleZoomIn();
+            break;
+          case '-':
+            e.preventDefault();
+            handleZoomOut();
+            break;
+          case '0':
+            e.preventDefault();
+            handleZoomToFit();
+            break;
+          case '1':
+            e.preventDefault();
+            handleZoomActualSize();
+            break;
           case 'delete':
           case 'backspace':
             e.preventDefault();
@@ -366,10 +395,26 @@ const PhotoArtEditor = () => {
             break;
         }
       }
+      
+      // Space bar for pan mode
+      if (e.code === 'Space' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setActiveTool('pan');
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        setActiveTool('select');
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
   }, [fabricCanvas]);
   
   // History management
@@ -477,6 +522,93 @@ const PhotoArtEditor = () => {
       toast.success("Object deleted!");
     }
   };
+
+  // Zoom and pan handlers
+  const handleZoomIn = () => {
+    const newZoom = Math.min(zoom * 1.2, 10);
+    setZoom(newZoom);
+    if (fabricCanvas) {
+      fabricCanvas.setZoom(newZoom);
+      fabricCanvas.renderAll();
+    }
+  };
+
+  const handleZoomOut = () => {
+    const newZoom = Math.max(zoom / 1.2, 0.1);
+    setZoom(newZoom);
+    if (fabricCanvas) {
+      fabricCanvas.setZoom(newZoom);
+      fabricCanvas.renderAll();
+    }
+  };
+
+  const handleZoomToFit = () => {
+    if (!fabricCanvas || !currentProject) return;
+    
+    const containerWidth = 800; // Approximate canvas container width
+    const containerHeight = 600; // Approximate canvas container height
+    const scaleX = containerWidth / currentProject.width;
+    const scaleY = containerHeight / currentProject.height;
+    const newZoom = Math.min(scaleX, scaleY, 1);
+    
+    setZoom(newZoom);
+    fabricCanvas.setZoom(newZoom);
+    fabricCanvas.renderAll();
+  };
+
+  const handleZoomActualSize = () => {
+    setZoom(1);
+    if (fabricCanvas) {
+      fabricCanvas.setZoom(1);
+      fabricCanvas.renderAll();
+    }
+  };
+
+  const handlePanStart = (e: any) => {
+    if (activeTool === 'pan' || e.e.button === 1) { // Middle mouse button
+      setIsPanning(true);
+      const pointer = fabricCanvas?.getPointer(e.e);
+      if (pointer) {
+        setLastPanPoint({ x: pointer.x, y: pointer.y });
+      }
+    }
+  };
+
+  const handlePanMove = (e: any) => {
+    if (!isPanning || !fabricCanvas) return;
+    
+    const pointer = fabricCanvas.getPointer(e.e);
+    const deltaX = pointer.x - lastPanPoint.x;
+    const deltaY = pointer.y - lastPanPoint.y;
+    
+    const newPanX = panX + deltaX;
+    const newPanY = panY + deltaY;
+    
+    setPanX(newPanX);
+    setPanY(newPanY);
+    
+    fabricCanvas.relativePan(new Point(deltaX, deltaY));
+    setLastPanPoint({ x: pointer.x, y: pointer.y });
+  };
+
+  const handlePanEnd = () => {
+    setIsPanning(false);
+  };
+
+  // Add pan event listeners
+  useEffect(() => {
+    if (!fabricCanvas) return;
+    
+    fabricCanvas.on('mouse:down', handlePanStart);
+    fabricCanvas.on('mouse:move', handlePanMove);
+    fabricCanvas.on('mouse:up', handlePanEnd);
+    
+    return () => {
+      fabricCanvas.off('mouse:down', handlePanStart);
+      fabricCanvas.off('mouse:move', handlePanMove);
+      fabricCanvas.off('mouse:up', handlePanEnd);
+    };
+  }, [fabricCanvas, activeTool, isPanning, lastPanPoint, panX, panY]);
   
   // Layer management handlers
   const handleLayerSelect = (layerId: string) => {
@@ -584,6 +716,13 @@ const PhotoArtEditor = () => {
         onRedo={handleRedo}
         onClear={handleClear}
         onShowTemplates={handleShowTemplates}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onZoomToFit={handleZoomToFit}
+        onZoomActualSize={handleZoomActualSize}
+        onBack={handleBackToStart}
+        onClose={handleClose}
+        zoom={zoom}
       />
       
       {/* Main Content */}
@@ -615,24 +754,24 @@ const PhotoArtEditor = () => {
                     {/* Corner space */}
                     <div className="w-5 h-5 bg-muted border-b border-r border-border" />
                     {/* Horizontal ruler */}
-                    <div className="flex-1 min-w-0">
-                      <RulerComponent
-                        orientation="horizontal"
-                        length={currentProject?.width || 800}
-                        zoom={1}
-                      />
-                    </div>
+                     <div className="flex-1 min-w-0">
+                       <RulerComponent
+                         orientation="horizontal"
+                         length={currentProject?.width || 800}
+                         zoom={zoom}
+                       />
+                     </div>
                   </div>
                   
                   <div className="flex flex-1 min-h-0">
                     {/* Vertical ruler */}
-                    <div className="flex-shrink-0">
-                      <RulerComponent
-                        orientation="vertical"
-                        length={currentProject?.height || 600}
-                        zoom={1}
-                      />
-                    </div>
+                     <div className="flex-shrink-0">
+                       <RulerComponent
+                         orientation="vertical"
+                         length={currentProject?.height || 600}
+                         zoom={zoom}
+                       />
+                     </div>
                     
                     {/* Canvas container with proper aspect ratio */}
                     <div className="flex-1 flex items-center justify-center bg-muted/10 min-w-0 min-h-0">

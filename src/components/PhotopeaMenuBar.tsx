@@ -7,6 +7,8 @@ import {
   MenubarSeparator,
   MenubarTrigger,
 } from "@/components/ui/menubar";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, X } from "lucide-react";
 import { ProjectConfig } from "./NewProjectDialog";
 
 interface PhotopeaMenuBarProps {
@@ -18,6 +20,13 @@ interface PhotopeaMenuBarProps {
   onRedo: () => void;
   onClear: () => void;
   onShowTemplates: () => void;
+  onZoomIn?: () => void;
+  onZoomOut?: () => void;
+  onZoomToFit?: () => void;
+  onZoomActualSize?: () => void;
+  onBack?: () => void;
+  onClose?: () => void;
+  zoom?: number;
 }
 
 const PhotopeaMenuBar: React.FC<PhotopeaMenuBarProps> = ({
@@ -29,19 +38,53 @@ const PhotopeaMenuBar: React.FC<PhotopeaMenuBarProps> = ({
   onRedo,
   onClear,
   onShowTemplates,
+  onZoomIn,
+  onZoomOut,
+  onZoomToFit,
+  onZoomActualSize,
+  onBack,
+  onClose,
+  zoom = 1,
 }) => {
   return (
-    <Menubar className="rounded-none border-b bg-background">
+    <div className="flex items-center border-b bg-background">
+      {/* Back and Close buttons */}
+      <div className="flex items-center gap-2 px-4">
+        {onBack && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onBack}
+            className="h-8 px-2"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Back
+          </Button>
+        )}
+        {onClose && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="h-8 px-2"
+          >
+            <X className="w-4 h-4 mr-1" />
+            Close
+          </Button>
+        )}
+      </div>
+      
+      <Menubar className="rounded-none border-0 bg-transparent flex-1">
       <MenubarMenu>
         <MenubarTrigger>File</MenubarTrigger>
         <MenubarContent>
-          <MenubarItem onClick={onNewProject}>New...</MenubarItem>
-          <MenubarItem onClick={onOpenFile}>Open</MenubarItem>
+          <MenubarItem onClick={onNewProject}>New...<span className="ml-auto text-xs opacity-60">Ctrl+N</span></MenubarItem>
+          <MenubarItem onClick={onOpenFile}>Open<span className="ml-auto text-xs opacity-60">Ctrl+O</span></MenubarItem>
           <MenubarItem>Open recent</MenubarItem>
           <MenubarSeparator />
           <MenubarItem onClick={onShowTemplates}>Templates</MenubarItem>
           <MenubarSeparator />
-          <MenubarItem onClick={onSave}>Save</MenubarItem>
+          <MenubarItem onClick={onSave}>Save<span className="ml-auto text-xs opacity-60">Ctrl+S</span></MenubarItem>
           <MenubarItem>Save as...</MenubarItem>
           <MenubarItem onClick={onExport}>Export as...</MenubarItem>
           <MenubarSeparator />
@@ -54,20 +97,40 @@ const PhotopeaMenuBar: React.FC<PhotopeaMenuBarProps> = ({
       <MenubarMenu>
         <MenubarTrigger>Edit</MenubarTrigger>
         <MenubarContent>
-          <MenubarItem onClick={onUndo}>Undo</MenubarItem>
-          <MenubarItem onClick={onRedo}>Redo</MenubarItem>
+          <MenubarItem onClick={onUndo}>Undo<span className="ml-auto text-xs opacity-60">Ctrl+Z</span></MenubarItem>
+          <MenubarItem onClick={onRedo}>Redo<span className="ml-auto text-xs opacity-60">Ctrl+Shift+Z</span></MenubarItem>
           <MenubarSeparator />
-          <MenubarItem>Cut</MenubarItem>
-          <MenubarItem>Copy</MenubarItem>
-          <MenubarItem>Paste</MenubarItem>
-          <MenubarItem>Paste Special</MenubarItem>
+          <MenubarItem>Step Forward<span className="ml-auto text-xs opacity-60">Shift+Ctrl+Z</span></MenubarItem>
+          <MenubarItem>Step Backward<span className="ml-auto text-xs opacity-60">Ctrl+Z</span></MenubarItem>
           <MenubarSeparator />
-          <MenubarItem onClick={onClear}>Clear</MenubarItem>
-          <MenubarItem>Fill</MenubarItem>
-          <MenubarItem>Stroke</MenubarItem>
+          <MenubarItem>Fade...<span className="ml-auto text-xs opacity-60">Shift+Ctrl+F</span></MenubarItem>
           <MenubarSeparator />
+          <MenubarItem>Cut<span className="ml-auto text-xs opacity-60">Ctrl+X</span></MenubarItem>
+          <MenubarItem>Copy<span className="ml-auto text-xs opacity-60">Ctrl+C</span></MenubarItem>
+          <MenubarItem>Copy Merged<span className="ml-auto text-xs opacity-60">Shift+Ctrl+C</span></MenubarItem>
+          <MenubarItem>Paste<span className="ml-auto text-xs opacity-60">Ctrl+V</span></MenubarItem>
+          <MenubarSeparator />
+          <MenubarItem onClick={onClear}>Clear<span className="ml-auto text-xs opacity-60">Delete</span></MenubarItem>
+          <MenubarItem>Fill...<span className="ml-auto text-xs opacity-60">Shift+F5</span></MenubarItem>
+          <MenubarItem>Stroke...</MenubarItem>
+          <MenubarSeparator />
+          <MenubarItem>Content-Aware Scale</MenubarItem>
+          <MenubarItem>Puppet Warp</MenubarItem>
+          <MenubarItem>Perspective Warp</MenubarItem>
+          <MenubarItem>Free Transform<span className="ml-auto text-xs opacity-60">Alt+Ctrl+T</span></MenubarItem>
           <MenubarItem>Transform</MenubarItem>
-          <MenubarItem>Free Transform</MenubarItem>
+          <MenubarSeparator />
+          <MenubarItem>Auto-Align</MenubarItem>
+          <MenubarItem>Auto-Blend</MenubarItem>
+          <MenubarSeparator />
+          <MenubarItem>Assign Profile</MenubarItem>
+          <MenubarItem>Convert to Profile</MenubarItem>
+          <MenubarSeparator />
+          <MenubarItem>Define New</MenubarItem>
+          <MenubarItem>Preset Manager...</MenubarItem>
+          <MenubarSeparator />
+          <MenubarItem>Preferences...<span className="ml-auto text-xs opacity-60">Ctrl+K</span></MenubarItem>
+          <MenubarItem>Local Storage...</MenubarItem>
         </MenubarContent>
       </MenubarMenu>
 
@@ -113,10 +176,10 @@ const PhotopeaMenuBar: React.FC<PhotopeaMenuBarProps> = ({
       <MenubarMenu>
         <MenubarTrigger>Select</MenubarTrigger>
         <MenubarContent>
-          <MenubarItem>All</MenubarItem>
-          <MenubarItem>Deselect</MenubarItem>
-          <MenubarItem>Reselect</MenubarItem>
-          <MenubarItem>Inverse</MenubarItem>
+          <MenubarItem>All<span className="ml-auto text-xs opacity-60">Ctrl+A</span></MenubarItem>
+          <MenubarItem>Deselect<span className="ml-auto text-xs opacity-60">Ctrl+D</span></MenubarItem>
+          <MenubarItem>Reselect<span className="ml-auto text-xs opacity-60">Shift+Ctrl+D</span></MenubarItem>
+          <MenubarItem>Inverse<span className="ml-auto text-xs opacity-60">Shift+Ctrl+I</span></MenubarItem>
           <MenubarSeparator />
           <MenubarItem>Color Range...</MenubarItem>
           <MenubarItem>Refine Edge...</MenubarItem>
@@ -152,10 +215,11 @@ const PhotopeaMenuBar: React.FC<PhotopeaMenuBarProps> = ({
           <MenubarItem>Proof Setup</MenubarItem>
           <MenubarItem>Proof Colors</MenubarItem>
           <MenubarSeparator />
-          <MenubarItem>Zoom In</MenubarItem>
-          <MenubarItem>Zoom Out</MenubarItem>
-          <MenubarItem>Fit on Screen</MenubarItem>
-          <MenubarItem>Actual Pixels</MenubarItem>
+          <MenubarItem onClick={onZoomIn}>Zoom In<span className="ml-auto text-xs opacity-60">Ctrl+=</span></MenubarItem>
+          <MenubarItem onClick={onZoomOut}>Zoom Out<span className="ml-auto text-xs opacity-60">Ctrl+-</span></MenubarItem>
+          <MenubarItem onClick={onZoomToFit}>Fit on Screen<span className="ml-auto text-xs opacity-60">Ctrl+0</span></MenubarItem>
+          <MenubarItem onClick={onZoomActualSize}>Actual Pixels<span className="ml-auto text-xs opacity-60">Ctrl+1</span></MenubarItem>
+          <MenubarItem>Zoom: {Math.round(zoom * 100)}%</MenubarItem>
           <MenubarSeparator />
           <MenubarItem>Show</MenubarItem>
           <MenubarItem>Snap</MenubarItem>
@@ -206,6 +270,12 @@ const PhotopeaMenuBar: React.FC<PhotopeaMenuBarProps> = ({
         </MenubarContent>
       </MenubarMenu>
     </Menubar>
+    
+    {/* Zoom indicator */}
+    <div className="px-4 text-sm text-muted-foreground">
+      {Math.round(zoom * 100)}%
+    </div>
+  </div>
   );
 };
 

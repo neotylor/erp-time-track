@@ -492,12 +492,12 @@ const PhotoArtEditor = () => {
         />
         
         {/* Canvas Area */}
-        <div className="flex-1 flex flex-col bg-muted/20">
-          <div className="flex-1 p-4">
+        <div className="flex-1 flex flex-col bg-muted/20 min-w-0">
+          <div className="flex-1 p-4 overflow-auto">
             <Card className="h-full">
-              <CardContent className="p-4 h-full flex items-center justify-center">
+              <CardContent className="p-4 h-full flex items-center justify-center overflow-hidden">
                 <div 
-                  className="border border-border rounded-lg shadow-lg overflow-hidden" 
+                  className="border border-border rounded-lg shadow-lg overflow-hidden max-w-full max-h-full" 
                   style={{ 
                     backgroundColor: currentProject?.background === "transparent" 
                       ? "transparent" 
@@ -506,10 +506,20 @@ const PhotoArtEditor = () => {
                       ? "linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)"
                       : "none",
                     backgroundSize: currentProject?.background === "transparent" ? "20px 20px" : "auto",
-                    backgroundPosition: currentProject?.background === "transparent" ? "0 0, 0 10px, 10px -10px, -10px 0px" : "0 0"
+                    backgroundPosition: currentProject?.background === "transparent" ? "0 0, 0 10px, 10px -10px, -10px 0px" : "0 0",
+                    maxWidth: "100%",
+                    maxHeight: "100%"
                   }}
                 >
-                  <canvas ref={canvasRef} className="max-w-full max-h-full" />
+                  <canvas 
+                    ref={canvasRef} 
+                    className="block"
+                    style={{ 
+                      maxWidth: "100%", 
+                      maxHeight: "100%", 
+                      objectFit: "contain" 
+                    }} 
+                  />
                 </div>
               </CardContent>
             </Card>

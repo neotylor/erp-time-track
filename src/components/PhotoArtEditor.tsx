@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Canvas as FabricCanvas, Circle, Rect, FabricImage, PencilBrush, FabricObject } from "fabric";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import PhotopeaStartScreen from "./PhotopeaStartScreen";
 import PhotopeaMenuBar from "./PhotopeaMenuBar";
@@ -9,6 +11,7 @@ import BrushSettings, { BrushConfig } from "./BrushSettings";
 import ToolsPanel from "./ToolsPanel";
 import LayersPanel from "./LayersPanel";
 import PropertiesPanel from "./PropertiesPanel";
+import RulerComponent from "./RulerComponent";
 
 // Extend FabricObject to include custom properties
 interface ExtendedFabricObject extends FabricObject {
@@ -50,6 +53,13 @@ const PhotoArtEditor = () => {
   // Layer management state
   const [layers, setLayers] = useState<Layer[]>([]);
   const [selectedLayer, setSelectedLayer] = useState<string | null>(null);
+  
+  // UI state
+  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  
+  // History management for undo/redo
+  const [history, setHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
 
   // New workflow handlers
   const handleNewProject = () => {
@@ -114,11 +124,21 @@ const PhotoArtEditor = () => {
       if (obj && !obj.id) {
         obj.id = `layer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         updateLayers(canvas);
+        saveCanvasState(canvas);
       }
     });
     
     canvas.on('object:removed', () => {
       updateLayers(canvas);
+      saveCanvasState(canvas);
+    });
+    
+    canvas.on('object:modified', () => {
+      saveCanvasState(canvas);
+    });
+    
+    canvas.on('path:created', () => {
+      saveCanvasState(canvas);
     });
 
     setFabricCanvas(canvas);
@@ -132,6 +152,9 @@ const PhotoArtEditor = () => {
       opacity: 1,
       type: 'background'
     }]);
+
+    // Initialize history
+    saveCanvasState(canvas);
 
     return () => {
       canvas.dispose();
@@ -288,6 +311,88 @@ const PhotoArtEditor = () => {
       fabricCanvas.off('mouse:up', handleCanvasMouseUp);
     };
   }, [fabricCanvas, handleCanvasMouseDown, handleCanvasMouseMove, handleCanvasMouseUp]);
+  
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key.toLowerCase()) {
+          case 'z':
+            e.preventDefault();
+            if (e.shiftKey) {
+              handleRedo();
+            } else {
+              handleUndo();
+            }
+            break;
+          case 'y':
+            e.preventDefault();
+            handleRedo();
+            break;
+          case 's':
+            e.preventDefault();
+            handleDownload();
+            break;
+          case 'n':
+            e.preventDefault();
+            handleNewProject();
+            break;
+          case 'o':
+            e.preventDefault();
+            handleOpenFile();
+            break;
+          case 'a':
+            e.preventDefault();
+            if (fabricCanvas) {
+              fabricCanvas.discardActiveObject();
+              const selection = new (FabricCanvas as any).ActiveSelection(fabricCanvas.getObjects(), {
+                canvas: fabricCanvas,
+              });
+              fabricCanvas.setActiveObject(selection);
+              fabricCanvas.renderAll();
+            }
+            break;
+          case 'd':
+            e.preventDefault();
+            if (fabricCanvas) {
+              fabricCanvas.discardActiveObject();
+              fabricCanvas.renderAll();
+            }
+            break;
+          case 'delete':
+          case 'backspace':
+            e.preventDefault();
+            handleDeleteSelected();
+            break;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [fabricCanvas]);
+  
+  // History management
+  const saveCanvasState = useCallback((canvas: FabricCanvas) => {
+    const state = JSON.stringify(canvas.toJSON());
+    setHistory(prev => {
+      const newHistory = prev.slice(0, historyIndex + 1);
+      newHistory.push(state);
+      // Keep only last 50 states
+      if (newHistory.length > 50) {
+        newHistory.shift();
+      }
+      return newHistory;
+    });
+    setHistoryIndex(prev => Math.min(prev + 1, 49));
+  }, [historyIndex]);
+  
+  const loadCanvasState = useCallback((canvas: FabricCanvas, state: string) => {
+    canvas.loadFromJSON(state).then(() => {
+      canvas.renderAll();
+      updateLayers(canvas);
+    });
+  }, [updateLayers]);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -345,13 +450,21 @@ const PhotoArtEditor = () => {
   };
 
   const handleUndo = () => {
-    // Basic undo - remove last object
-    if (!fabricCanvas) return;
-    const objects = fabricCanvas.getObjects();
-    if (objects.length > 0) {
-      fabricCanvas.remove(objects[objects.length - 1]);
-      fabricCanvas.renderAll();
-    }
+    if (!fabricCanvas || historyIndex <= 0) return;
+    
+    const newIndex = historyIndex - 1;
+    setHistoryIndex(newIndex);
+    loadCanvasState(fabricCanvas, history[newIndex]);
+    toast.success("Undone!");
+  };
+  
+  const handleRedo = () => {
+    if (!fabricCanvas || historyIndex >= history.length - 1) return;
+    
+    const newIndex = historyIndex + 1;
+    setHistoryIndex(newIndex);
+    loadCanvasState(fabricCanvas, history[newIndex]);
+    toast.success("Redone!");
   };
 
   const handleDeleteSelected = () => {
@@ -468,7 +581,7 @@ const PhotoArtEditor = () => {
         onSave={handleDownload}
         onExport={handleDownload}
         onUndo={handleUndo}
-        onRedo={() => {}} // TODO: implement redo
+        onRedo={handleRedo}
         onClear={handleClear}
         onShowTemplates={handleShowTemplates}
       />
@@ -486,7 +599,7 @@ const PhotoArtEditor = () => {
           onUpload={() => fileInputRef.current?.click()}
           onDownload={handleDownload}
           onUndo={handleUndo}
-          onRedo={() => {}} // TODO: implement redo
+          onRedo={handleRedo}
           onClear={handleClear}
           onDeleteSelected={handleDeleteSelected}
         />
@@ -495,31 +608,65 @@ const PhotoArtEditor = () => {
         <div className="flex-1 flex flex-col bg-muted/20 min-w-0">
           <div className="flex-1 p-4 overflow-auto">
             <Card className="h-full">
-              <CardContent className="p-4 h-full flex items-center justify-center overflow-hidden">
-                <div 
-                  className="border border-border rounded-lg shadow-lg overflow-hidden max-w-full max-h-full" 
-                  style={{ 
-                    backgroundColor: currentProject?.background === "transparent" 
-                      ? "transparent" 
-                      : currentProject?.background || "white",
-                    backgroundImage: currentProject?.background === "transparent" 
-                      ? "linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)"
-                      : "none",
-                    backgroundSize: currentProject?.background === "transparent" ? "20px 20px" : "auto",
-                    backgroundPosition: currentProject?.background === "transparent" ? "0 0, 0 10px, 10px -10px, -10px 0px" : "0 0",
-                    maxWidth: "100%",
-                    maxHeight: "100%"
-                  }}
-                >
-                  <canvas 
-                    ref={canvasRef} 
-                    className="block"
-                    style={{ 
-                      maxWidth: "100%", 
-                      maxHeight: "100%", 
-                      objectFit: "contain" 
-                    }} 
-                  />
+              <CardContent className="p-4 h-full overflow-hidden">
+                <div className="h-full flex flex-col">
+                  {/* Rulers */}
+                  <div className="flex">
+                    {/* Corner space */}
+                    <div className="w-5 h-5 bg-muted border-b border-r border-border" />
+                    {/* Horizontal ruler */}
+                    <div className="flex-1 min-w-0">
+                      <RulerComponent
+                        orientation="horizontal"
+                        length={currentProject?.width || 800}
+                        zoom={1}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-1 min-h-0">
+                    {/* Vertical ruler */}
+                    <div className="flex-shrink-0">
+                      <RulerComponent
+                        orientation="vertical"
+                        length={currentProject?.height || 600}
+                        zoom={1}
+                      />
+                    </div>
+                    
+                    {/* Canvas container with proper aspect ratio */}
+                    <div className="flex-1 flex items-center justify-center bg-muted/10 min-w-0 min-h-0">
+                      <div 
+                        className="border border-border rounded-lg shadow-lg overflow-hidden"
+                        style={{ 
+                          backgroundColor: currentProject?.background === "transparent" 
+                            ? "transparent" 
+                            : currentProject?.background || "white",
+                          backgroundImage: currentProject?.background === "transparent" 
+                            ? "linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)"
+                            : "none",
+                          backgroundSize: currentProject?.background === "transparent" ? "20px 20px" : "auto",
+                          backgroundPosition: currentProject?.background === "transparent" ? "0 0, 0 10px, 10px -10px, -10px 0px" : "0 0",
+                          aspectRatio: currentProject ? `${currentProject.width} / ${currentProject.height}` : "16 / 9",
+                          maxWidth: "100%",
+                          maxHeight: "100%",
+                          width: "fit-content",
+                          height: "fit-content"
+                        }}
+                      >
+                        <canvas 
+                          ref={canvasRef} 
+                          className="block"
+                          style={{ 
+                            width: "100%",
+                            height: "100%",
+                            maxWidth: "100%",
+                            maxHeight: "100%"
+                          }} 
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -527,39 +674,55 @@ const PhotoArtEditor = () => {
         </div>
         
         {/* Right Panels */}
-        <div className="w-80 bg-background border-l flex flex-col">
-          {/* Brush Settings - Only show when draw tool is active */}
-          {activeTool === "draw" && (
-            <div className="border-b">
-              <BrushSettings
-                config={brushConfig}
-                onChange={setBrushConfig}
-                color={activeColor}
-                onColorChange={setActiveColor}
-              />
-            </div>
+        <div className={`${rightPanelCollapsed ? 'w-8' : 'w-80'} bg-background border-l flex flex-col transition-all duration-200`}>
+          {/* Collapse Toggle */}
+          <div className="flex justify-end p-2 border-b">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}
+              className="w-6 h-6 p-0"
+            >
+              {rightPanelCollapsed ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            </Button>
+          </div>
+          
+          {!rightPanelCollapsed && (
+            <>
+              {/* Brush Settings - Only show when draw tool is active */}
+              {activeTool === "draw" && (
+                <div className="border-b">
+                  <BrushSettings
+                    config={brushConfig}
+                    onChange={setBrushConfig}
+                    color={activeColor}
+                    onColorChange={setActiveColor}
+                  />
+                </div>
+              )}
+              
+              {/* Properties Panel */}
+              <div className="flex-1 border-b">
+                <PropertiesPanel
+                  selectedObject={selectedObject}
+                  onPropertyChange={handlePropertyChange}
+                />
+              </div>
+              
+              {/* Layers Panel */}
+              <div className="flex-1">
+                <LayersPanel
+                  layers={layers}
+                  selectedLayer={selectedLayer}
+                  onLayerSelect={handleLayerSelect}
+                  onLayerVisibilityToggle={handleLayerVisibilityToggle}
+                  onLayerLockToggle={handleLayerLockToggle}
+                  onLayerDelete={handleLayerDelete}
+                  onLayerRename={handleLayerRename}
+                />
+              </div>
+            </>
           )}
-          
-          {/* Properties Panel */}
-          <div className="flex-1 border-b">
-            <PropertiesPanel
-              selectedObject={selectedObject}
-              onPropertyChange={handlePropertyChange}
-            />
-          </div>
-          
-          {/* Layers Panel */}
-          <div className="flex-1">
-            <LayersPanel
-              layers={layers}
-              selectedLayer={selectedLayer}
-              onLayerSelect={handleLayerSelect}
-              onLayerVisibilityToggle={handleLayerVisibilityToggle}
-              onLayerLockToggle={handleLayerLockToggle}
-              onLayerDelete={handleLayerDelete}
-              onLayerRename={handleLayerRename}
-            />
-          </div>
         </div>
       </div>
 

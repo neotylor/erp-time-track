@@ -12,6 +12,7 @@ import {
   Type,
   Move,
   ZoomIn,
+  Hand,
   Palette,
   Upload,
   Download,
@@ -53,6 +54,7 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
   const tools = [
     { id: "select", icon: MousePointer, label: "Select" },
     { id: "move", icon: Move, label: "Move" },
+    { id: "hand", icon: Hand, label: "Hand" },
     { id: "draw", icon: Brush, label: "Brush" },
     { id: "rectangle", icon: Square, label: "Rectangle" },
     { id: "circle", icon: CircleIcon, label: "Circle" },

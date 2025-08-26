@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { Canvas as FabricCanvas, Circle, Rect, FabricImage, PencilBrush, FabricObject, Point } from "fabric";
+import { Canvas as FabricCanvas, Circle, Rect, FabricImage, PencilBrush, FabricObject, Point, IText } from "fabric";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -202,6 +202,10 @@ const PhotoArtEditor = () => {
       case "move":
         fabricCanvas.defaultCursor = 'move';
         break;
+      case "hand":
+        fabricCanvas.defaultCursor = 'grab';
+        fabricCanvas.selection = false;
+        break;
       case "rectangle":
       case "circle":
       case "text":
@@ -237,9 +241,9 @@ const PhotoArtEditor = () => {
     setLayers(newLayers);
   }, []);
 
-  // Handle shape drawing
+  // Handle shape drawing and text creation
   const handleCanvasMouseDown = useCallback((e: any) => {
-    if (!fabricCanvas || activeTool === "select" || activeTool === "draw" || activeTool === "move") return;
+    if (!fabricCanvas || activeTool === "select" || activeTool === "draw" || activeTool === "move" || activeTool === "hand") return;
     
     const pointer = fabricCanvas.getPointer(e.e);
     setIsDrawing(true);
@@ -253,7 +257,7 @@ const PhotoArtEditor = () => {
           top: pointer.y,
           width: 0,
           height: 0,
-          fill: activeColor,
+          fill: 'transparent',
           stroke: activeColor,
           strokeWidth: 2,
         });
@@ -263,11 +267,24 @@ const PhotoArtEditor = () => {
           left: pointer.x,
           top: pointer.y,
           radius: 0,
-          fill: activeColor,
+          fill: 'transparent',
           stroke: activeColor,
           strokeWidth: 2,
         });
         break;
+      case "text":
+        const text = new IText('Type here...', {
+          left: pointer.x,
+          top: pointer.y,
+          fill: activeColor,
+          fontSize: 20,
+          fontFamily: 'Arial',
+        });
+        fabricCanvas.add(text);
+        fabricCanvas.setActiveObject(text);
+        text.enterEditing();
+        // Don't switch back to select tool for text
+        return;
     }
     
     if (shape) {
@@ -277,7 +294,7 @@ const PhotoArtEditor = () => {
   }, [fabricCanvas, activeTool, activeColor]);
 
   const handleCanvasMouseMove = useCallback((e: any) => {
-    if (!fabricCanvas || !isDrawing || activeTool === "select" || activeTool === "draw" || activeTool === "move") return;
+    if (!fabricCanvas || !isDrawing || activeTool === "select" || activeTool === "draw" || activeTool === "move" || activeTool === "hand") return;
     
     const pointer = fabricCanvas.getPointer(e.e);
     const activeObject = fabricCanvas.getActiveObject();
@@ -306,8 +323,13 @@ const PhotoArtEditor = () => {
   }, [fabricCanvas, isDrawing, activeTool]);
 
   const handleCanvasMouseUp = useCallback(() => {
-    setIsDrawing(false);
-  }, []);
+    if (isDrawing && (activeTool === "rectangle" || activeTool === "circle")) {
+      // Keep the shape tool active after drawing, don't switch to select
+      setIsDrawing(false);
+    } else {
+      setIsDrawing(false);
+    }
+  }, [isDrawing, activeTool]);
 
   // Add canvas event listeners
   useEffect(() => {
@@ -396,10 +418,10 @@ const PhotoArtEditor = () => {
         }
       }
       
-      // Space bar for pan mode
+      // Space bar for hand tool
       if (e.code === 'Space' && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
-        setActiveTool('pan');
+        setActiveTool('hand');
       }
     };
 
@@ -565,11 +587,14 @@ const PhotoArtEditor = () => {
   };
 
   const handlePanStart = (e: any) => {
-    if (activeTool === 'pan' || e.e.button === 1) { // Middle mouse button
+    if (activeTool === 'hand' || activeTool === 'pan' || e.e.button === 1) { // Hand tool or middle mouse button
       setIsPanning(true);
       const pointer = fabricCanvas?.getPointer(e.e);
       if (pointer) {
         setLastPanPoint({ x: pointer.x, y: pointer.y });
+      }
+      if (activeTool === 'hand') {
+        fabricCanvas!.defaultCursor = 'grabbing';
       }
     }
   };
@@ -593,6 +618,9 @@ const PhotoArtEditor = () => {
 
   const handlePanEnd = () => {
     setIsPanning(false);
+    if (activeTool === 'hand' && fabricCanvas) {
+      fabricCanvas.defaultCursor = 'grab';
+    }
   };
 
   // Add pan event listeners
@@ -753,25 +781,25 @@ const PhotoArtEditor = () => {
                   <div className="flex">
                     {/* Corner space */}
                     <div className="w-5 h-5 bg-muted border-b border-r border-border" />
-                    {/* Horizontal ruler */}
-                     <div className="flex-1 min-w-0">
-                       <RulerComponent
-                         orientation="horizontal"
-                         length={currentProject?.width || 800}
-                         zoom={zoom}
-                       />
-                     </div>
+                     {/* Horizontal ruler */}
+                      <div className="flex-1 min-w-0 flex justify-center">
+                        <RulerComponent
+                          orientation="horizontal"
+                          length={currentProject?.width || 800}
+                          zoom={zoom}
+                        />
+                      </div>
                   </div>
                   
                   <div className="flex flex-1 min-h-0">
-                    {/* Vertical ruler */}
-                     <div className="flex-shrink-0">
-                       <RulerComponent
-                         orientation="vertical"
-                         length={currentProject?.height || 600}
-                         zoom={zoom}
-                       />
-                     </div>
+                     {/* Vertical ruler */}
+                      <div className="flex-shrink-0 flex items-center">
+                        <RulerComponent
+                          orientation="vertical"
+                          length={currentProject?.height || 600}
+                          zoom={zoom}
+                        />
+                      </div>
                     
                     {/* Canvas container with proper aspect ratio */}
                     <div className="flex-1 flex items-center justify-center bg-muted/10 min-w-0 min-h-0">

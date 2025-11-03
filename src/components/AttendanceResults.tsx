@@ -69,7 +69,7 @@ export const AttendanceResults: React.FC<AttendanceResultsProps> = ({
 
   return (
     <>
-      <SummaryDashboard data={filteredData} />
+      <SummaryDashboard data={data} />
 
       <Card>
         <CardHeader>

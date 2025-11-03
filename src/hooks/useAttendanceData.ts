@@ -39,8 +39,7 @@ export const useAttendanceData = () => {
 
   const handleParseData = () => {
     try {
-      const allRecords = parseAttendanceData(inputData, dailyHours);
-      
+      const allRecords = parseAttendanceData(inputData, dailyHours, selectedMonth, selectedYear);
       // Filter records by selected month and year
       const records = allRecords.filter(record => {
         const recordDate = new Date(record.date);

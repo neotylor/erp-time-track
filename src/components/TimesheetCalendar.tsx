@@ -78,7 +78,7 @@ export const TimesheetCalendar: React.FC<TimesheetCalendarProps> = ({ data }) =>
                   const dayOfWeek = date.getDay();
                   
                   return (
-                    <React.Fragment key={index}>
+                    <React.Fragment key={index+'-'+record.date}>
                       {index === 0 && [...Array(dayOfWeek)].map((_, i) => (
                         <div key={`empty-${i}`} className="p-2"></div>
                       ))}

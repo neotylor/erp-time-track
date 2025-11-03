@@ -3,7 +3,7 @@ import Papa from 'papaparse';
 import { AttendanceRecord } from '@/types/attendance';
 import { parseTimeToMinutes, parseTimeStringToMinutes, minutesToTimeString, formatDifferenceTime } from './timeUtils';
 
-export const parseAttendanceData = (data: string, dailyHours: string): AttendanceRecord[] => {
+export const parseAttendanceData = (data: string, dailyHours: string, selectedMonth: number, selectedYear: number): AttendanceRecord[] => {
   const records: AttendanceRecord[] = [];
 
   // Check if input contains time format (hrs, min)
@@ -11,8 +11,8 @@ export const parseAttendanceData = (data: string, dailyHours: string): Attendanc
     // Parse time-based input
     const timeEntries = data.split('\t').map(entry => entry.trim()).filter(entry => entry);
     const currentDate = new Date();
-    const currentMonth = currentDate.getMonth();
-    const currentYear = currentDate.getFullYear();
+    const currentMonth = selectedMonth ?? currentDate.getMonth();
+    const currentYear = selectedYear ?? currentDate.getFullYear();
     const dailyMinutes = parseTimeStringToMinutes(dailyHours);
     
     timeEntries.forEach((timeEntry, index) => {
@@ -70,7 +70,6 @@ export const parseAttendanceData = (data: string, dailyHours: string): Attendanc
     }
 
     const dailyMinutes = parseTimeStringToMinutes(dailyHours);
-
     result.data.forEach((row: any) => {
       // Handle different possible column names
       const dateField = row.Date || row.date || row.DATE || Object.values(row)[0];

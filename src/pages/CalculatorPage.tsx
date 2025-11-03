@@ -11,6 +11,10 @@ const CalculatorPage = () => {
     attendanceData,
     dailyHours,
     setDailyHours,
+    selectedMonth,
+    setSelectedMonth,
+    selectedYear,
+    setSelectedYear,
     showCalendarView,
     setShowCalendarView,
     showCheerUp,
@@ -34,6 +38,10 @@ const CalculatorPage = () => {
           setInputData={setInputData}
           dailyHours={dailyHours}
           setDailyHours={setDailyHours}
+          selectedMonth={selectedMonth}
+          setSelectedMonth={setSelectedMonth}
+          selectedYear={selectedYear}
+          setSelectedYear={setSelectedYear}
           onParseData={handleParseData}
           onFileUpload={handleFileUpload}
           onLoadSample={handleSampleData}

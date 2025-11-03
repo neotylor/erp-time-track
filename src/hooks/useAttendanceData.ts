@@ -7,9 +7,12 @@ import { parseAttendanceData } from '@/utils/attendanceParser';
 import { minutesToTimeString } from '@/utils/timeUtils';
 
 export const useAttendanceData = () => {
+  const currentDate = new Date();
   const [inputData, setInputData] = useState('');
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
   const [dailyHours, setDailyHours] = useState("08:00");
+  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth());
+  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const [showCalendarView, setShowCalendarView] = useState(() => {
     const saved = localStorage.getItem('timesheetViewPreference');
     return saved ? JSON.parse(saved) : false;
@@ -36,7 +39,15 @@ export const useAttendanceData = () => {
 
   const handleParseData = () => {
     try {
-      const records = parseAttendanceData(inputData, dailyHours);
+      const allRecords = parseAttendanceData(inputData, dailyHours);
+      
+      // Filter records by selected month and year
+      const records = allRecords.filter(record => {
+        const recordDate = new Date(record.date);
+        return recordDate.getMonth() === selectedMonth && 
+               recordDate.getFullYear() === selectedYear;
+      });
+      
       setAttendanceData(records);
       
       // Calculate overall status for working days only
@@ -105,6 +116,10 @@ export const useAttendanceData = () => {
     attendanceData,
     dailyHours,
     setDailyHours,
+    selectedMonth,
+    setSelectedMonth,
+    selectedYear,
+    setSelectedYear,
     showCalendarView,
     setShowCalendarView,
     showCheerUp,
